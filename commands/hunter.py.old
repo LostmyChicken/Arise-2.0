@@ -1,0 +1,698 @@
+import discord
+from discord.ext import commands
+from discord import app_commands
+from structure.items import ItemManager
+from structure.player import Player
+from structure.emoji import getClassEmoji, getEmoji, getRarityEmoji
+from utilis.utilis import extractId, extractName, get_emoji, get_emoji_url, getStatHunter, getStatWeapon,player_hunter_autocomplete
+from structure.stats import getStat
+from structure.heroes import HeroManager
+from rapidfuzz import process,fuzz
+
+
+async def gear_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    gears = ["Gear I", "Gear II", "Gear III"]
+    return [
+        app_commands.Choice(name=gear, value=gear)
+        for gear in gears if current.lower() in gear.lower()
+    ]
+
+
+class ViewAll(discord.ui.View):
+    def __init__(self, ctx,user, total_pages, current_page, embed, inventory):
+        super().__init__(timeout=20)
+        self.ctx = ctx
+        self.user = user
+        self.total_pages = total_pages
+        self.current_page = current_page
+        self.embed = embed
+        self.inventory = inventory
+        double_right_button = discord.ui.Button(
+            label=str(self.total_pages),
+            style=discord.ButtonStyle.primary,
+            row=1
+        )
+        double_right_button.callback = self.double_right_button_callback
+        self.add_item(double_right_button)
+    
+    @discord.ui.button(label=1, style=discord.ButtonStyle.primary, row=1)
+    async def double_left_button_callback(self, button, interaction):
+        if self.current_page == 1:
+            await interaction.response.send_message(
+                "You are already on the first page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page = 1
+        await self.update_message()
+
+    @discord.ui.button(emoji=getEmoji("left"), style=discord.ButtonStyle.secondary, row=1)
+    async def previous_button_callback(self, button, interaction):
+        if self.current_page == 1:
+            await interaction.response.send_message(
+                "You are already on the first page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page -= 1
+        await self.update_message()
+
+    @discord.ui.button(emoji=getEmoji("pause"), style=discord.ButtonStyle.secondary, row=1)
+    async def pause(self, button, interaction):
+        await interaction.response.defer()
+        self.view = None
+        await self.ctx.edit(view=None)
+
+    @discord.ui.button(emoji=getEmoji("right"), style=discord.ButtonStyle.secondary, row=1)
+    async def next_button_callback(self, button, interaction):
+        if self.current_page == self.total_pages:
+            await interaction.response.send_message(
+                "You are already on the last page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page += 1
+        await self.update_message()
+
+    async def double_right_button_callback(self, interaction:discord.Interaction):
+        if self.current_page == self.total_pages:
+            await interaction.response.send_message(
+                "You are already on the last page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page = self.total_pages
+        await self.update_message()
+
+    @discord.ui.select(
+        placeholder="Choose an Option!",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="SSR Rarity",
+                                 description="Sort Rarity in Ascending Order", emoji=getRarityEmoji("ssr")),
+            discord.SelectOption(label="SR Rarity",
+                                 description="Sort Rarity in Descending Order", emoji=getRarityEmoji("super rare")),
+            discord.SelectOption(label="R Rarity",
+                                 description="Sort Rarity in Descending Order", emoji=getRarityEmoji("rare")),
+            discord.SelectOption(label="Wind Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("wind")),
+            discord.SelectOption(label="Fire Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("fire")),
+            discord.SelectOption(label="Water Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("water")),
+            discord.SelectOption(label="Light Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("light")),
+            discord.SelectOption(label="Dark Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("dark")),
+        ]
+    )
+    async def res(self, select, interaction):
+        option = select.values[0]
+        await interaction.response.defer()
+        filtered_inventory = await self.filter_inventory(option)
+
+        if not filtered_inventory:
+            await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="No Hunters Found",
+                    description=f"No items found for the selected option: {option}.",
+                    color=discord.Color.red()
+                ),
+                view=self  # You can keep the view if you want the buttons to remain
+            )
+            return
+
+        await self.update_message(inventory=filtered_inventory)
+
+        await interaction.edit_original_response(
+            embed=self.embed,  # Updated embed with filtered data
+            view=self  # Keeps the view for interaction
+        )
+
+    async def filter_inventory(self, option):
+        filtered_inventory = {}
+        
+        if option == "SSR Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).rarity == "SSR"}
+        elif option == "Wind Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).classType == "Wind"}
+        elif option == "Fire Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).classType == "Fire"}
+        elif option == "Water Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).classType == "Water"}
+        elif option == "Light Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).classType == "Light"}
+        elif option == "Dark Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).classType == "Dark"}
+        elif option == "SR Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).rarity == "Super Rare"}
+        elif option == "R Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await HeroManager.get(item_id)).rarity == "Rare"}
+
+        return filtered_inventory
+
+    async def update_message(self, inventory=None):
+        if inventory is None:
+            inventory = self.inventory
+
+        if not inventory:
+            await self.ctx.edit(embed=discord.Embed(
+                title="No Weapons",
+                description="You have no weapons in your inventory.",
+                color=discord.Color.red()
+            ), view=None)
+            return
+
+        weapons_per_page = 10
+        qx = getEmoji("qx")
+        down = getEmoji("down")
+        start_index = (self.current_page - 1) * weapons_per_page
+        end_index = min(start_index + weapons_per_page, len(inventory))
+        inventory_list = list(inventory.items())
+
+        current_page_weapons = inventory_list[start_index:end_index]
+
+        self.embed.clear_fields()
+        description = f"Hunters Collected by <@{self.user}>\n\n"
+
+        for index, (item_id, hunter_data) in enumerate(current_page_weapons, start=start_index + 1):
+            weapon = await HeroManager.get(item_id)
+
+            tier_stars = "★" * hunter_data['tier'] + "☆" * (5 - hunter_data['tier'])
+            
+            if weapon:
+                    description += (
+                        f"{get_emoji(weapon.id)} **{weapon.name}**"
+                        f" • `{weapon.type}` • {tier_stars} • "
+                        f"`LV {hunter_data['level']}`\n"
+                    )
+        self.embed.description= description
+        self.embed.set_footer(
+            text=f'Viewing Page {self.current_page}/{self.total_pages} This page has '
+                 f'{len(current_page_weapons)}/{len(inventory)}.')
+
+        await self.ctx.edit(embed=self.embed, view=self)
+    async def on_timeout(self):
+        await self.ctx.edit(embed=self.embed, view=None)
+class Hunter(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+    
+    @commands.hybrid_group(name="hunter", aliases=["h"], help="Commands related to managing and viewing your hunters.")
+    @app_commands.describe(name="The name of the hunter to get info about.")
+    @app_commands.autocomplete(name=player_hunter_autocomplete)
+    async def h_(self, ctx: commands.Context, *, name: str):
+        """Shows information about a hunter you own."""
+        player = await Player.get(ctx.author.id)
+
+        if player is None:
+            down = getEmoji("down")
+            embed = discord.Embed(title="SYSTEM MESSAGE", description=f"You haven't started the bot yet\n{down}Use `sl start` to get Re-Awakening", color=discord.Color.red())
+            await ctx.send(embed=embed)
+            return
+        
+        inventory = player.get_hunters()
+
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any Hunters in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Find the closest matching name using RapidFuzz
+        hunter_names = {item_id: (extractName(item_id)) for item_id in inventory}
+        matches = process.extract(name, hunter_names.values(), scorer=fuzz.ratio, limit=1)
+        best_match = matches[0] if matches and matches[0][1] >= 50 else None
+
+        if not best_match:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Hunter '{name}' Not Found**\nPlease ensure you provided a valid name.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Get the matched hunter data
+        matched_name = best_match[0]
+        matched_id = next(item_id for item_id, hunter_name in hunter_names.items() if hunter_name == matched_name)
+        hunter_data = {"id": matched_id, "details": await HeroManager.get(matched_id), "player_data": inventory[matched_id]}
+
+        item = hunter_data['details']
+        player_data = hunter_data['player_data']
+
+        tier_stars = "★" * player_data['tier'] + "☆" * (5 - player_data['tier'])
+        down = getEmoji("down")
+        shard = getEmoji("shard")
+        shards = player_data["quantity"]
+        
+        description = (
+            f"**Level**: {player_data['level']}\n**Experience**: `[{player_data.get('xp', 0)}/{player_data['level']*100}]`\n"
+            f"**Tier**: {tier_stars}\n{down} Hunter Shards: `x{shards-1}` {get_emoji(item.id)}"
+        )
+
+        element_colors = {
+            "Dark": discord.Color.purple(),
+            "Light": discord.Color.gold(),
+            "Water": discord.Color.blue(),
+            "Fire": discord.Color.orange(),
+            "Wind": discord.Color.green(),
+        }
+        
+        embed_color = element_colors.get(item.classType, discord.Color.default())
+        
+        embed = discord.Embed(
+            title=f"{item.name}",
+            color=embed_color,
+            description=description
+        )
+
+        embed.set_image(url=get_emoji_url(item.id))
+        qx = getEmoji("qx")
+        emoji_url = get_emoji_url(getRarityEmoji(item.rarity))
+        
+        embed.add_field(
+            name="Information",
+            value=f"Type: `{item.type}`\n"
+                f"Class: `{item.classType.capitalize()}` {getClassEmoji(item.classType)}",
+            inline=True
+        )
+
+        # Get equipped weapon stats
+        weapon_id = player_data.get("weapon")
+        text = ""
+        slot = getEmoji("slot")
+
+        if weapon_id:
+            weapon = await ItemManager.get(weapon_id)
+            text = f"{weapon.name}"
+
+            # Fetch weapon stats using getStatWeapon
+            weapon_level = player.inventory[weapon_id]["level"]
+            text = f"{weapon.name} **|** Level: `{weapon_level}`"
+
+            weapon_stats = await getStatWeapon(weapon_id, weapon_level)
+
+            weapon_attack = weapon_stats['attack']
+            weapon_defense = weapon_stats['defense']
+            weapon_health = weapon_stats['hp']
+            weapon_mp = weapon_stats['mp']
+        else:
+            text = f"Empty {slot}"
+            weapon_attack = 0
+            weapon_defense = 0
+            weapon_health = 0
+            weapon_mp = 0
+
+        embed.add_field(
+            name="Equipped Weapon",
+            value=text,
+            inline=False
+        )
+
+        atk = getEmoji("attack")
+        defe = getEmoji("defense")
+        health = getEmoji("health")
+        mp = getEmoji("mp")
+        down = getEmoji("down")
+        
+        # Get hunter base stats
+        stats = await getStatHunter(matched_id, player_data["level"])
+
+        embed.add_field(
+            name="Stats",
+            value=(
+                f"{qx} **Attack**: {stats.attack} `(+{weapon_attack})`\n"
+                f"{qx} **Defense**: {stats.defense} `(+{weapon_defense})`\n"
+                f"{qx} **Health**: {stats.hp} `(+{weapon_health})`\n"
+                f"{down} **Mana Points**: {stats.mp} `(+{weapon_mp})`\n"
+            ),
+            inline=False
+        )
+        embed.set_footer(
+    icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url,
+    text=f"This hunter belongs to {ctx.author.name}\nsl hunter upgrade to increase Level"
+)
+        embed.set_author(name=f"{ctx.author.name}'s Hunter")
+        embed.set_thumbnail(url=emoji_url)
+        await ctx.send(embed=embed)
+                
+    @h_.command(name="break",aliases=["b"], help="Perform a limit break on a hunter to increase their tier.")
+    @app_commands.describe(name="The name of the hunter you want to limit break.")
+    @app_commands.autocomplete(name=player_hunter_autocomplete)
+    async def limit_break(self,ctx: commands.Context, *, name: str):        
+
+        player = await Player.get(ctx.author.id)
+        down = getEmoji("down")
+
+        if not player:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR]**\nYou don't have a profile yet. Use the bot to start your journey!",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if player.trade:
+            await ctx.send(f"<@{player.id}>, is in the middle of a 🤝 trade. Complete it before proceeding or join the support server if this is a bug.")
+            return
+
+        inventory = player.get_hunters()
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any Hunters in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Get all hunter names for fuzzy matching
+        hunter_names = {item_id: (await HeroManager.get(item_id)).name for item_id in inventory}
+        best_match, score, item_id = process.extractOne(name, hunter_names.values(), scorer=fuzz.ratio)
+
+        if score < 50:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Hunter '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Find matching hunter data
+        hunter_data = None
+        for id, hunter_name in hunter_names.items():
+            if hunter_name == best_match:
+                hunter_data = {"id": id, "details": await HeroManager.get(id), "player_data": inventory[id]}
+                break
+
+        if not hunter_data:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Hunter '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        item = hunter_data['details']
+        hunter_id = hunter_data['id']
+        hunter_info = hunter_data["player_data"]
+        shards = hunter_info["quantity"] - 1
+
+        shard_break_levels = {10: 1, 20: 1, 40: 2, 60: 2, 80: 4}
+        tier_break_levels = {10: 5, 20: 10, 40: 20, 60: 40, 80: 60}
+
+        cube_attr_map = {"Water": "icube", "Wind": "wcube", "Fire": "fcube", "Dark": "dcube", "Light": "lcube"}
+        cube = cube_attr_map.get(item.classType)
+
+        limit_break_conditions = {
+            (10, 0): (shard_break_levels[10], tier_break_levels[10], 1, 20),
+            (20, 1): (shard_break_levels[20], tier_break_levels[20], 2, 40),
+            (40, 2): (shard_break_levels[40], tier_break_levels[40], 3, 60),
+            (60, 3): (shard_break_levels[60], tier_break_levels[60], 4, 80),
+            (80, 4): (shard_break_levels[80], tier_break_levels[80], 5, 100)
+        }
+
+        key = (hunter_info["level"], hunter_info["tier"])
+        if key not in limit_break_conditions:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR]**\nThis hunter has not reached the **required** level\n-# {down} No limit-break possible at the moment.",
+                    color=discord.Color.dark_red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        shard_required, tier_required, new_tier, upto = limit_break_conditions[key]
+
+        if shards < shard_required:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=(
+                        f"**[ERROR] Insufficient Hunter Shards**\n"
+                        f"You need x{shard_required} {get_emoji(item.id)} Hunter Shards to limit-break this hunter."
+                    ),
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if getattr(player, cube, 0) < tier_required:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Insufficient {item.classType} Cubes**\nYou need x{tier_required} {getEmoji(cube)} {item.classType} cubes to limit-break this hunter.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Deduct the cubes and perform the limit-break
+        setattr(player, cube, getattr(player, cube, 0) - tier_required)
+        hunter_info["tier"] = new_tier
+        hunter_info["quantity"] -= shard_required
+
+        tier_stars = "★" * new_tier + "☆" * (5 - new_tier)
+        player.mIncrease("break")
+        await player.save()
+
+        embed = discord.Embed(
+                title="LIMIT-BREAKED",
+                description=(
+                    f"**Hunter:** {item.name}\n"
+                    f"**Cubes Used:** {getEmoji(cube)} {item.classType} Cubes (x{tier_required})\n"
+                    f"**Shards Used:** {get_emoji(item.id)} (x{shard_required})\n"
+                    f"{down} Limit-Break Successful!\n"
+                    f"**Upgraded Tier:** ` {tier_stars} `"
+                ),
+                color=discord.Color.dark_green(),
+            )
+        embed.set_thumbnail(url=get_emoji_url(item.id))
+        embed.set_footer(text=f"- You can now upgrade your hunter up to {upto} level.")
+        await ctx.send(embed=embed)
+
+    @h_.command(name="upgrade",aliases=["u"], help="Upgrade a hunter's level using enhancement gear.")
+    @app_commands.describe(name="The name of the hunter to upgrade.", gear="The gear to use for the upgrade.", quantity="The amount of gear to use.")
+    @app_commands.autocomplete(name=player_hunter_autocomplete, gear=gear_autocomplete)
+    async def hunterupgrade(self, ctx: commands.Context, name: str, gear: str, quantity: int = 1):        
+        player = await Player.get(ctx.author.id)
+        down = getEmoji("down")
+
+        if not player:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR]**\nYou don't have a profile yet. Use the bot to start your journey!",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if player.trade:
+            await ctx.send(f"<@{player.id}>, is in the middle of a 🤝 trade. Complete it before proceeding or join the support server if this is a bug.")
+            return
+
+        inventory = player.get_hunters()
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any Hunters in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Get all hunter names for fuzzy matching
+        hunter_names = {item_id: (await HeroManager.get(item_id)).name for item_id in inventory}
+        best_match, score, item_id = process.extractOne(name, hunter_names.values(), scorer=fuzz.ratio)
+        
+        if score < 50:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Hunter '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+        
+        # Find matching hunter data
+        hunter_data = None
+        for id, hunter_name in hunter_names.items():
+            if hunter_name == best_match:
+                hunter_data = {"id": id, "details": await HeroManager.get(id), "player_data": inventory[id]}
+                break
+
+        if not hunter_data:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Hunter '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        item = hunter_data['details']
+        hunter_id = hunter_data['id']
+        hunter_info = hunter_data["player_data"]
+
+        if (hunter_info["level"] == 10 and hunter_info["tier"] == 0) or \
+        (hunter_info["level"] == 20 and hunter_info["tier"] == 1) or \
+        (hunter_info["level"] == 40 and hunter_info["tier"] == 2) or \
+        (hunter_info["level"] == 60 and hunter_info["tier"] == 3) or \
+        (hunter_info["level"] == 80 and hunter_info["tier"] == 4):
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR]**\nThis hunter is at level {hunter_info['level']} and needs a Limit-Break to upgrade further.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Gear Mapping (Allow Short Names)
+        gear_map = {
+            "gear i": "Gear I", "gear1": "Gear I", "1": "Gear I", "g1": "Gear I",
+            "gear ii": "Gear II", "gear2": "Gear II", "2": "Gear II", "g2": "Gear II",
+            "gear iii": "Gear III", "gear3": "Gear III", "3": "Gear III", "g3": "Gear III"
+        }
+        
+        gear_input = gear.lower()
+
+        if gear_input not in gear_map:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR] Invalid Gear Selected**\nPlease choose a valid gear option.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+        
+        gear_name = gear_map[gear_input]
+        xp_per_gear = {"Gear I": 100, "Gear II": 500, "Gear III": 1000}
+        total_xp = xp_per_gear[gear_name] * quantity
+
+        gear_attr_map = {"Gear I": "gear1", "Gear II": "gear2", "Gear III": "gear3"}
+        player_gear_attr = gear_attr_map[gear_name]
+
+        if getattr(player, player_gear_attr, 0) < quantity:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=(
+                        f"**[ERROR] Insufficient {gear_name}**\n"
+                        f"You need x{quantity} {getEmoji(player_gear_attr)} {gear_name}, but you only have {getattr(player, player_gear_attr, 0)}."
+                    ),
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        def calculate_gold_cost(level):
+            return 2000 * (2 ** (level // 20))  # Scales with level brackets
+
+        setattr(player, player_gear_attr, getattr(player, player_gear_attr) - quantity)
+        level_before = hunter_info["level"]
+
+        # Add XP to the hunter
+        result = player.hunter_add_xp(hunter_id, total_xp)
+
+        # Check level after adding XP
+        level_after = hunter_info["level"]
+        total_gold_required = sum(calculate_gold_cost(level) for level in range(level_before + 1, level_after + 1))
+
+        levels_gained = level_after - level_before
+        go = getEmoji("gold")
+
+        if levels_gained > 0:
+            if player.gold < total_gold_required:
+                embed = discord.Embed(
+                        title="SYSTEM MESSAGE",
+                        description=(
+                            f"**[ERROR] Insufficient Gold**\n"
+                            f"You need {go} x{total_gold_required} gold to upgrade this hunter."
+                        ),
+                        color=discord.Color.red()
+                    ).set_footer(text="System Notification")
+                await ctx.send(embed=embed)
+                return
+            player.gold -= total_gold_required
+        player.mIncrease("upgrade",quantity)
+        await player.save()
+
+        g = getEmoji(gear_attr_map[gear_name])
+        gold_spent_message = f"**Gold Spent:** {go} x{total_gold_required}\n" if levels_gained > 0 else ""
+        qx = getEmoji("qx")
+        embed = discord.Embed(
+                title="UPGRADE SUCCESSFUL",
+                description=f"""
+**Hunter:** {item.name}
+**Gear Used:** {g} {gear_name} (x{quantity})
+{gold_spent_message}
+Expereience Gained: `{total_xp}`
+{down} **Level(s)** Obtained: +**{levels_gained}**
+"""
+                ,
+                color=discord.Color.dark_green()
+            )
+        embed.set_thumbnail(url=get_emoji_url(item.id))
+        embed.set_footer(text="System Notification")
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="hunters", description="View your hunter inventory.")
+    async def item_inventory(self, ctx: commands.Context):
+        player = await Player.get(ctx.author.id)
+
+        if not player:
+            down = getEmoji("down")
+            embed = discord.Embed(title="SYSTEM MESSAGE", description=f"You haven't started the bot yet\n{down} Use `sl start` to get Re-Awakening", color=discord.Color.red())
+            await ctx.send(embed=embed)
+            return
+
+        inventory = player.get_hunters()
+
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any hunters in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        qx = getEmoji("qx")
+        down = getEmoji("down")
+        embed = discord.Embed(
+            title="Hunter Inventory",
+            color=discord.Color.dark_blue()
+        )
+        
+        description = f"Hunters Collected by <@{player.id}>\n\n"
+
+        weapons_per_page = 10
+        total_pages = (len(inventory) // weapons_per_page) + (1 if len(inventory) % weapons_per_page > 0 else 0)
+        start_index = 0
+        end_index = min(start_index + weapons_per_page, len(inventory))
+        inventory_list = list(inventory.items())
+        current_page_weapons = inventory_list[start_index:end_index]
+        for item_id, hunter_data in current_page_weapons:
+            weapon = await HeroManager.get(item_id)
+            tier_stars = "★" * hunter_data['tier'] + "☆" * (5 - hunter_data['tier'])
+            
+            if weapon:
+                description += (
+                    f"{get_emoji(weapon.id)} **{weapon.name}** •"
+                    f" `{weapon.type}` • {tier_stars} • "
+                    f"`LV {hunter_data['level']}`\n"
+                )
+
+        embed.description = description
+        embed.set_footer(text=f"Viewing Page: [1/{total_pages}] | Total Hunters Available: {len(inventory)}")
+
+        message = await ctx.reply(embed=embed, mention_author=False)
+
+        view = ViewAll(message, player.id,total_pages, 1, embed, inventory)
+        await message.edit(embed=embed, view=view)
+
+
+
+async def setup(bot):
+    await bot.add_cog(Hunter(bot))

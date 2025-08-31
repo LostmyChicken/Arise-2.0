@@ -1,0 +1,70 @@
+# Environment and secrets
+.env
+*.env
+!.env.example
+
+# Database files
+data/
+*.db
+*.db-shm
+*.db-wal
+database_backups/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+maintenance.log
+
+# JSON data files (may contain sensitive data)
+db.json
+shop.json
+servers.json
+bot.json
+customs.json
+vote_reminders.json
+
+# Backup files
+*.backup
+*_backup_*.json
+player_*_backup.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

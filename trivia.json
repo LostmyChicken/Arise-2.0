@@ -1,0 +1,239 @@
+{
+  "questions": [
+    {
+      "question": "What is the name of the main protagonist in Solo Leveling?",
+      "options": ["Sung Jin-Woo", "Cha Hae-In", "Go Gun-Hee", "Baek Yoon-Ho"],
+      "answer": 1
+    },
+    {
+      "question": "What rank was Sung Jin-Woo initially as a hunter?",
+      "options": ["S-Rank", "A-Rank", "E-Rank", "C-Rank"],
+      "answer": 3
+    },
+    {
+      "question": "What is the name of the dungeon where Sung Jin-Woo gets trapped and gains his powers?",
+      "options": ["Red Gate Dungeon", "Double Dungeon", "Demon Castle", "Jeju Island Raid"],
+      "answer": 2
+    },
+    {
+      "question": "What ability does Sung Jin-Woo awaken after surviving the Double Dungeon?",
+      "options": ["Pyrokinesis", "The System", "Teleportation", "Healing Magic"],
+      "answer": 2
+    },
+    {
+      "question": "Which guild does Cha Hae-In belong to?",
+      "options": ["Hunters Guild", "White Tiger Guild", "Scavenger Guild", "Fang Guild"],
+      "answer": 2
+    },
+    {
+      "question": "Who is the leader of the White Tiger Guild?",
+      "options": ["Baek Yoon-Ho", "Go Gun-Hee", "Choi Jong-In", "Woo Jin-Chul"],
+      "answer": 1
+    },
+    {
+      "question": "What is the name of Sung Jin-Woo's younger sister?",
+      "options": ["Sung Ji-Ah", "Park Kyung-Hye", "Lee Joo-Hee", "Yoo Jin-Ho"],
+      "answer": 1
+    },
+    {
+      "question": "Which S-Rank hunter is known as the 'Beast Monarch'?",
+      "options": ["Choi Jong-In", "Baek Yoon-Ho", "Thomas Andre", "Liu Zhigang"],
+      "answer": 2
+    },
+    {
+      "question": "What happens to hunters who fail to clear a dungeon?",
+      "options": ["They lose their powers", "They are trapped forever", "They die", "They get fined"],
+      "answer": 3
+    },
+    {
+      "question": "Which monster does Sung Jin-Woo fight in the Instant Dungeon at the hospital?",
+      "options": ["High Orc", "Steel Elf", "Cerberus", "Igris"],
+      "answer": 4
+    },
+    {
+      "question": "What is the name of the organization that oversees hunters in Korea?",
+      "options": ["Hunter Bureau", "Korea Hunter Association", "Hunter Command Center", "The System"],
+      "answer": 2
+    },
+    {
+      "question": "Which S-Rank hunter is the chairman of the Hunter Association?",
+      "options": ["Go Gun-Hee", "Choi Jong-In", "Baek Yoon-Ho", "Woo Jin-Chul"],
+      "answer": 1
+    },
+    {
+      "question": "What type of hunter is Cha Hae-In?",
+      "options": ["Healer", "Tanker", "Mage", "Fighter"],
+      "answer": 4
+    },
+    {
+      "question": "What is the name of Sung Jin-Woo's first shadow soldier?",
+      "options": ["Iron", "Greed", "Igris", "Tusk"],
+      "answer": 3
+    },
+    {
+      "question": "Which dungeon does Sung Jin-Woo clear alone to prove his strength?",
+      "options": ["C-Rank Dungeon", "Red Gate Dungeon", "Demon Castle", "Jeju Island Dungeon"],
+      "answer": 1
+    },
+    {
+      "question": "Who is Sung Jin-Woo's best friend and fellow hunter?",
+      "options": ["Yoo Jin-Ho", "Lee Joo-Hee", "Park Chul", "Hwang Dong-Su"],
+      "answer": 1
+    },
+    {
+      "question": "What is the highest rank a hunter can achieve?",
+      "options": ["A-Rank", "S-Rank", "National-Level", "E-Rank"],
+      "answer": 3
+    },
+    {
+      "question": "Which country's hunters are involved in the Jeju Island raid?",
+      "options": ["Japan", "China", "USA", "Korea"],
+      "answer": 4
+    },
+    {
+      "question": "What ability allows Sung Jin-Woo to raise fallen enemies as shadow soldiers?",
+      "options": ["Shadow Extraction", "Necromancy", "Soul Steal", "Army of the Dead"],
+      "answer": 1
+    },
+    {
+      "question": "Which S-Rank hunter has fire-based abilities?",
+      "options": ["Choi Jong-In", "Baek Yoon-Ho", "Thomas Andre", "Liu Zhigang"],
+      "answer": 1
+    },
+    {
+      "question": "What was Sung Jin-Woo's nickname as the weakest hunter?",
+      "options": ["The Lone Wolf", "The World's Weakest", "The Underdog", "The E-Rank Loser"],
+      "answer": 2
+    },
+    {
+      "question": "What item does Sung Jin-Woo receive after clearing the Double Dungeon?",
+      "options": ["Demon King's Sword", "Cain's Dagger", "Kamish's Wrath", "Cerberus' Fang"],
+      "answer": 2
+    },
+    {
+      "question": "Which hunter betrays the team in the Double Dungeon?",
+      "options": ["Hwang Dong-Su", "Yoo Jin-Ho", "Lee Joo-Hee", "Kim Chul"],
+      "answer": 1
+    },
+    {
+      "question": "What is the name of the healer in Jin-Woo's first dungeon raid team?",
+      "options": ["Lee Joo-Hee", "Park Jin-Sung", "Song Chi-Yul", "Han Song-Yi"],
+      "answer": 1
+    },
+    {
+      "question": "How does Sung Jin-Woo escape the Double Dungeon?",
+      "options": ["Teleportation Scroll", "Killing the Boss", "A hidden exit", "Rescue by S-Rank hunters"],
+      "answer": 1
+    },
+    {
+      "question": "What ability allows Jin-Woo to see his stats and quests?",
+      "options": ["The Gamer's Eye", "The System", "Hunter Vision", "Mana Scanner"],
+      "answer": 2
+    },
+    {
+      "question": "Which monster does Jin-Woo fight in the red gate?",
+      "options": ["Cerberus", "High Orc Shaman", "Demon King", "Knight of Hell"],
+      "answer": 4
+    },
+    {
+      "question": "What happens to Jin-Woo's body after he awakens 'The System'?",
+      "options": ["It becomes weaker", "It constantly evolves", "It turns into shadow", "It glows blue"],
+      "answer": 2
+    },
+    {
+      "question": "Why does Cha Hae-In take an interest in Jin-Woo?",
+      "options": ["His strength", "His smell", "His shadow soldiers", "His kindness"],
+      "answer": 2
+    },
+    {
+      "question": "What is the penalty for failing a quest from 'The System'?",
+      "options": ["Death", "Losing stats", "Losing a skill", "No penalty"],
+      "answer": 1
+    },
+    {
+      "question": "Which guild invites Jin-Woo after his C-Rank dungeon solo clear?",
+      "options": ["Hunters Guild", "Scavenger Guild", "Fang Guild", "White Tiger Guild"],
+      "answer": 1
+    },
+    {
+      "question": "What class does Jin-Woo's 'Player' status initially assign him?",
+      "options": ["Necromancer", "Warrior", "Assassin", "Mage"],
+      "answer": 1
+    },
+    {
+      "question": "Who is the vice-captain of the White Tiger Guild?",
+      "options": ["Woo Jin-Chul", "Park Hee-Jin", "Choi Jong-In", "Ma Dong-Wook"],
+      "answer": 2
+    },
+    {
+      "question": "What is the name of the S-Rank healer introduced later?",
+      "options": ["Lee Ju-Hee", "Park Jong-Su", "Min Byung-Gu", "Yoon Ki-Joon"],
+      "answer": 3
+    },
+    {
+      "question": "Which dungeon is known for its deadly insect-type monsters?",
+      "options": ["Red Gate", "Demon Tower", "Jeju Island", "Ant Nest"],
+      "answer": 4
+    },
+    {
+      "question": "What does Jin-Woo name his first shadow soldier?",
+      "options": ["Iron", "Greed", "Igris", "Tank"],
+      "answer": 3
+    },
+    {
+      "question": "How does Jin-Woo disguise his power growth from others?",
+      "options": ["Hiding in shadows", "Using a mask", "Claiming a 'second awakening'", "Faking injuries"],
+      "answer": 3
+    },
+    {
+      "question": "Which S-Rank hunter is known for his immense physical strength?",
+      "options": ["Thomas Andre", "Liu Zhigang", "Christopher Reed", "Baek Yoon-Ho"],
+      "answer": 1
+    },
+    {
+      "question": "What is the goal of the Ant Queen on Jeju Island?",
+      "options": ["Destroy Korea", "Evolve into a Monarch", "Create a dungeon", "Control other hunters"],
+      "answer": 2
+    },
+    {
+      "question": "Which character can sense Jin-Woo's power despite his disguise?",
+      "options": ["Go Gun-Hee", "Woo Jin-Chul", "Cha Hae-In", "Choi Jong-In"],
+      "answer": 2
+    },
+    {
+      "question": "What is the name of the final boss in the Demon Castle dungeon?",
+      "options": ["Demon King Baran", "Cerberus", "High Orc Shaman", "Knight of Hell"],
+      "answer": 1
+    },
+    {
+      "question": "What special ability does Yoo Jin-Ho possess?",
+      "options": ["Healing", "Enhanced senses", "No special ability", "Wealth detection"],
+      "answer": 4
+    },
+    {
+      "question": "Which shadow soldier was originally a boss monster?",
+      "options": ["Iron", "Tusk", "Igris", "Greed"],
+      "answer": 3
+    },
+    {
+      "question": "What is the name of the Japanese S-Rank hunter?",
+      "options": ["Goto Ryuji", "Tanaka Shinji", "Yamamoto Kenji", "Sato Hiroshi"],
+      "answer": 1
+    },
+    {
+      "question": "What color are Sung Jin-Woo's magic powers?",
+      "options": ["Blue", "Red", "Black", "Purple"],
+      "answer": 3
+    },
+    {
+      "question": "Which hunter was originally assigned to protect Jin-Woo's sister?",
+      "options": ["Park Chul", "Lee Joo-Hee", "Yoo Jin-Ho", "Han Song-Yi"],
+      "answer": 1
+    },
+    {
+      "question": "What is the name of the giant S-Rank gate that appears?",
+      "options": ["Jeju Gate", "Demon Gate", "Kamish's Gate", "Red Gate"],
+      "answer": 3
+    }
+  ]
+}

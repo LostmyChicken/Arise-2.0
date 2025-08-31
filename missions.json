@@ -1,0 +1,32 @@
+[
+    {
+        "cmd": "worldboss",
+        "times": 5,
+        "quantity": 3,
+        "description": "Participate and defeat 5 World Bosses."
+    },
+    {
+        "cmd": "gate",
+        "times": 10,
+        "quantity":2,
+        "description": "Participate and win 10 Gates."
+    },
+    {
+        "cmd": "train",
+        "times": 20,
+        "quantity":2,
+        "description": "Train your body x20 times"
+    },
+    {
+        "cmd": "upgrade",
+        "times": 100,
+        "quantity": 2,
+        "description": "Upgrade any weapon/hunter x100 times"
+    },
+    {
+        "cmd": "break",
+        "times": 1,
+        "quantity": 2,
+        "description": "Limit break any weapon/hunter x1 times"
+    }
+]

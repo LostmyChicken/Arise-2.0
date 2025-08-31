@@ -1,0 +1,746 @@
+import json
+import logging
+import random
+import re
+import aiosqlite
+import discord
+from utilis.utilis import ELEMENT_WEAKNESSES, extractId, extractName, get_emoji, getStatHunter, getStatWeapon
+from structure.emoji import getClassEmoji, getEmoji
+from structure.heroes import HeroManager
+from structure.player import Player
+from structure.BossDrop import pbar
+
+def get_database_path():
+    try:
+        with open("db.json", "r") as f:
+            config = json.load(f)
+            return config.get("player", "data/player.db")
+    except Exception as e:
+        logging.error(f"Error loading database configuration: {e}")
+        return "data/player.db"
+
+
+DATABASE_PATH = get_database_path()
+def statCalc(level:int,stat:int):
+    inc = level / 12 + 1
+    
+    if(level==1):
+        inc = 1
+    return round(stat * inc)
+from discord.ui import View, Select,Button
+
+class HunterSelectionView(View):
+    def __init__(self, user, hunters, callback):
+        super().__init__(timeout=60)
+        self.user = user
+        self.hunters = hunters
+        self.callback = callback
+        
+        # Create buttons for each alive hunter
+        for idx, hunter in enumerate(hunters):
+            if hunter['health'] > 0:
+                button = Button(
+                    label=hunter['name'],
+                    style=discord.ButtonStyle.secondary,
+                    custom_id=f"hunter_{idx}"
+                )
+                button.callback = self.on_button_click
+                self.add_item(button)
+                
+        # Add a skip turn button
+        skip_button = Button(
+            label="Skip Turn",
+            style=discord.ButtonStyle.danger
+        )
+        skip_button.callback = self.on_skip_click
+        self.add_item(skip_button)
+
+    async def on_button_click(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user:
+            await interaction.response.send_message("You can't select for someone else's hunters!", ephemeral=True)
+            return
+            
+        hunter_idx = int(interaction.data["custom_id"].split("_")[1])
+        selected_hunter = self.hunters[hunter_idx]
+        
+        # Disable all buttons after selection
+
+        await self.callback(interaction, selected_hunter)
+        self.stop()
+
+    async def on_skip_click(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user:
+            await interaction.response.send_message("You can't skip someone else's turn!", ephemeral=True)
+            return
+            
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+            
+        await interaction.response.edit_message(content="Turn skipped!", view=self)
+        await self.callback(interaction, None)  # None indicates skip
+        self.stop()
+
+class RaidHandler:
+    down = getEmoji("down")
+    qx = getEmoji("qx")
+
+    def __init__(self, raid, channel, data):
+        self.raid = raid
+        self.channel = channel
+        self.current_turn = 0
+        self.active_member_index = 0
+        self.active_hunters = self.get_active_hunters()
+        self.shadow_health = statCalc(raid.level, raid.health)
+        self.maxhealth = statCalc(raid.level, raid.health)
+        self.attack = statCalc(raid.level, data["attack"])
+        self.defense = statCalc(raid.level, data["defense"])
+        self.element = raid.raid_class
+        self.image = data["image"]
+
+    def get_active_hunters(self):
+        if self.active_member_index < len(self.raid.members):
+            member_id = list(self.raid.members.keys())[self.active_member_index]
+            return list(self.raid.members[member_id]['hunters'].values())
+        return []
+
+    async def start_raid(self):
+        await self.fight_loop()
+
+    async def fight_loop(self):
+        while self.shadow_health > 0:
+            # Check if current member has any alive hunters
+            alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+            
+            if not alive_hunters:
+                # Move to next member
+                self.active_member_index += 1
+                
+                # Check if all members have been processed
+                if self.active_member_index >= len(self.raid.members):
+                    await self.raid_defeat()
+                    return
+                    
+                # Get next member's hunters
+                self.active_hunters = self.get_active_hunters()
+                alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+                
+                if not alive_hunters:
+                    continue  # Skip to next member if no alive hunters
+                    
+                member_id = list(self.raid.members.keys())[self.active_member_index]
+                await self.channel.send(content=f"<@{member_id}>, it's your turn!")
+                continue
+
+            # Current member's turn
+            await self.hunter_selection_turn(alive_hunters)
+
+            if self.shadow_health <= 0:
+                await self.raid_victory()
+                return
+
+            # Shadow's turn - only attack if there are alive hunters
+            alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+            if alive_hunters:
+                await self.shadow_turn(alive_hunters)
+                
+                # Check if current member still has alive hunters after shadow attack
+                alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+                if not alive_hunters:
+                    # Move to next member immediately after defeat
+                    self.active_member_index += 1
+                    
+                    if self.active_member_index >= len(self.raid.members):
+                        await self.raid_defeat()
+                        return
+                        
+                    self.active_hunters = self.get_active_hunters()
+                    alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+                    
+                    if alive_hunters:
+                        member_id = list(self.raid.members.keys())[self.active_member_index]
+                        await self.channel.send(content=f"<@{member_id}>, it's your turn!")
+                        
+            self.current_turn += 1
+
+        # Final check in case shadow was defeated
+        if self.shadow_health <= 0:
+            await self.raid_victory()
+
+    async def hunter_selection_turn(self, alive_hunters):
+        member_id = list(self.raid.members.keys())[self.active_member_index]
+        
+        embed = discord.Embed(
+            title=f"Select Hunter to Attack",
+            description=f"**{self.raid.members[member_id]['name']}'s Turn**\nChoose which hunter will attack the shadow!",
+        )
+        
+        # Add hunter info to embed
+        e = getEmoji("qx")
+        down = getEmoji("down")
+        for i, hunter in enumerate(self.active_hunters):
+            status = "🟢" if hunter['health'] > 0 else "🔴"
+            if status == "🟢":
+                b = pbar(hunter['health'], hunter['max_health'], 7)
+                cleaned = re.sub(r"`\[.*?\]`", "", b).strip()
+
+                # Determine inline setting
+                if len(self.active_hunters) == 2:
+                    inline = True
+                else:
+                    inline = i >= 2  # First two are False, rest True
+
+                embed.add_field(
+                    name=f"{hunter['name']}",
+                    value=(
+                        f"{e}<:Swords:1339943683591639194> {hunter['attack']} <:Shield:1339944667067977778> {hunter['defense']}\n"
+                        f"{down}{cleaned} `{hunter['health']}/{hunter['max_health']}`"
+                    ),
+                    inline=inline
+                )
+
+        
+        # Add shadow info
+        shadow_health_bar = pbar(self.shadow_health, self.maxhealth, 10)
+        cleaned_ = re.sub(r"`\[.*?\]`", "", shadow_health_bar).strip()
+        embed.add_field(
+            name=f"Shadow {self.raid.shadow}",
+            value=(
+                f"{e}{getClassEmoji(self.element)} {self.element.title()}\n"
+                f"{e}<:Swords:1339943683591639194> {self.attack} <:Shield:1339944667067977778> {self.defense}\n"
+                f"{e}<:health:1336693127255425024> `{self.shadow_health}/{self.maxhealth}`\n"
+                f"{down}{cleaned_}\n"
+            ),
+            inline=False
+        )
+        
+        view = HunterSelectionView(member_id, alive_hunters, self.handle_hunter_selection)
+        message = await self.channel.send(
+            embed=embed,
+            view=view
+        )
+        
+        timed_out = await view.wait()
+        if timed_out:
+            # Timeout occurred - move to next user
+            await message.edit(content=f"{self.raid.members[member_id]['name']} took too long to choose! Moving to next participant.", view=None)
+            
+            # Move to next member
+            self.active_member_index += 1
+            
+            # Check if all members have been processed
+            if self.active_member_index >= len(self.raid.members):
+                await self.raid_defeat()
+                return
+                
+            # Get next member's hunters
+            self.active_hunters = self.get_active_hunters()
+            alive_hunters = [h for h in self.active_hunters if h['health'] > 0]
+            
+            if alive_hunters:
+                member_id = list(self.raid.members.keys())[self.active_member_index]
+                await self.channel.send(content=f"<@{member_id}>, it's your turn!")
+            else:
+                # If next member has no alive hunters, continue the loop
+                await self.fight_loop()
+    async def handle_hunter_selection(self, interaction, selected_hunter):
+        if selected_hunter is None:  # Skip turn was chosen
+            # await interaction.followup.send("Turn skipped!")
+            return
+        
+        # await interaction.followup.send(f"{selected_hunter['name']} was selected to attack!")
+        await self.hunter_attack(selected_hunter,interaction)
+
+    async def hunter_attack(self, hunter,interaction=None):
+        damage = await self.calculate_hunter(hunter, self.defense)
+        self.shadow_health = max(0, self.shadow_health - damage)
+        
+        member_id = list(self.raid.members.keys())[self.active_member_index]
+        self.raid.members[member_id]["damage"] = self.raid.members[member_id].get("damage", 0) + damage
+        if interaction:
+            message = interaction.message
+            if message.embeds:
+                embed = message.embeds[0]  # Get the first embed
+            else:
+                embed = discord.Embed(title=hunter['name'])  # Fallback if no embed exists
+            
+        # Update the embed with hunter's image
+        embed.description=f"> *{extractName(hunter['id'])} attacked and dealt {damage} damage on the shadow.*"
+        embed.set_thumbnail(url=hunter['image'])
+        
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    async def shadow_turn(self, alive_hunters):
+        if not alive_hunters:
+            return
+
+        # Shadow attacks random alive hunter
+        target = random.choice(alive_hunters)
+        char = await HeroManager.get(target['id'])
+        damage = await self.calculate_damage(self.attack, self.attack, char.defense, self.element, char.classType)
+
+        target["health"] = max(0, target["health"] - damage)
+
+        shadow_health_bar = pbar(self.shadow_health, self.maxhealth, 10)
+        des=f"> *The shadow attacks **{target['name']}** for {damage} damage!*"
+
+        shadow_embed = discord.Embed(
+            title=f"{self.raid.shadow}'s Turn"        )
+
+        # Show only the target's current status
+        if target["health"] > 0:
+            shadow_embed.add_field(
+                name=f"{target['name']}",
+                value=f"<:health:1336693127255425024> `{target['health']}/{target['max_health']}`",
+                inline=True
+            )
+        else:
+            des += f"\n> *{target['name']} fainted!*"
+        shadow_embed.description = des
+        shadow_embed.set_thumbnail(url=self.image)
+        await self.channel.send(embed=shadow_embed)
+
+        if target["health"] <= 0:
+            defeat_embed = discord.Embed(
+                title="Hunter Defeated",
+                description=f"**{target['name']}** has been defeated by the shadow!",
+                color=discord.Color.dark_red()
+            )
+            defeat_embed.set_thumbnail(url=target['image'])
+            # await self.channel.send(embed=defeat_embed)
+
+    async def raid_victory(self):
+        victory_embed = discord.Embed(
+            title="Shadow Raid Victory!",
+            description=f"The shadow **{self.raid.shadow}** has been defeated!",
+            color=discord.Color.dark_green()
+        )
+        
+        for member_id, member_data in self.raid.members.items():
+            damage_dealt = member_data.get("damage", 0)
+            guild = self.channel.guild
+            member = guild.get_member(int(member_id))
+            member_name = member.display_name if member else "Unknown"
+            
+            trace = getEmoji("trace")
+            xp = getEmoji("xp")
+            gold = getEmoji("gold")
+            
+            x = round(damage_dealt / 12)
+            t = round(damage_dealt / 14)
+            participation_gold = 1000
+            
+            victory_embed.add_field(
+                name=f"{member_name}",
+                value=(
+                    f"<:Swords:1339943683591639194> Damage Dealt: {damage_dealt}\n"
+                    f"{self.qx} Obtained `x{t}` {trace} Traces of Shadow.\n"
+                    f"{self.down} Gained `x{x}` {xp} Experience"
+                ),
+                inline=False
+            )
+            
+            player = await Player.get(member_id)
+            player.inc = False
+            player.xp += x
+            player.tos += t
+            player.gold += participation_gold
+            try:
+                player.mIncrease("raid")
+            except:
+                pass
+            await player.save()
+        
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            await db.execute("PRAGMA journal_mode=WAL;")
+            await db.commit()
+            await db.execute("DELETE FROM raids WHERE channel = ?", (self.raid.channel,))
+            await db.commit()
+        
+        victory_embed.add_field(
+            name="Participation Rewards",
+            value=f"- {gold} Gold - x1000"
+        )
+        victory_embed.set_footer(text="Use the obtained shadow fragments to arise!")
+        await self.channel.send(embed=victory_embed)
+
+    async def raid_defeat(self):
+        defeat_embed = discord.Embed(
+            title="Raid Defeat",
+            description=f"The hunters have been defeated by the shadow **{self.raid.shadow}**.",
+            color=discord.Color.dark_red()
+        )
+        
+        for member_id, member_data in self.raid.members.items():
+            damage_dealt = member_data.get("damage", 0)
+            guild = self.channel.guild
+            member = guild.get_member(int(member_id))
+            member_name = member.display_name if member else "Unknown"
+            
+            xp = getEmoji("xp")
+            gold = getEmoji("gold")
+            
+            x = round(damage_dealt / 12)
+            participation_gold = 1000
+            
+            defeat_embed.add_field(
+                name=f"{member_name}",
+                value=(
+                    f"<:Swords:1339943683591639194> **Damage Dealt:** `{damage_dealt}`\n"
+                    f"{self.down} Gained **{x}** {xp} Experience"
+                ),
+                inline=False
+            )
+
+            player = await Player.get(member_id)
+            player.inc = False
+            player.xp += x
+            player.gold += participation_gold
+            await player.save()
+        
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            await db.execute("DELETE FROM raids WHERE channel = ?", (self.raid.channel,))
+            await db.commit()
+            
+        defeat_embed.add_field(
+            name="Participation Rewards",
+            value=f"- {gold} Gold - x1000"
+        )
+        defeat_embed.set_footer(text="Do not give up and Join Again!")
+
+        await self.channel.send(embed=defeat_embed)
+
+    async def calculate_hunter(self, hunter, shadow_defense):
+        base_damage = int((hunter["attack"] ** 2) / (hunter["attack"] + shadow_defense))
+        
+        multiplier = 1.0
+        if self.element in ELEMENT_WEAKNESSES.get(hunter["element"], {}).get("effective_against", []):
+            multiplier = 1.5  # Hunter's attack is effective
+        elif hunter["element"] in ELEMENT_WEAKNESSES.get(self.element, {}).get("effective_against", []):
+            multiplier = 0.5  # Hunter's attack is not very effective
+        return int(base_damage * multiplier)
+
+    async def calculate_damage(self, attacker_attack, attacker_defense, defender_defense, attacker_element, defender_element):
+        base_damage = int((attacker_attack ** 2) / (attacker_attack + defender_defense))
+        
+        multiplier = 1.0
+        if defender_element in ELEMENT_WEAKNESSES.get(attacker_element.title(), {}).get("effective_against", []):
+            multiplier = 1.5  # Effective attack
+        elif attacker_element in ELEMENT_WEAKNESSES.get(defender_element.title(), {}).get("effective_against", []):
+            multiplier = 0.5  # Not very effective attack
+
+        return int(base_damage * multiplier)
+class Raid:
+    def __init__(self, channel, level, shadow, raid_class, health, members=None,started=False):
+        self.channel = channel  # Primary key
+        self.members = members or {} 
+        self.level = level
+        self.shadow = shadow
+        self.raid_class = raid_class
+        self.health = health  # Health of the shadow
+        self.started = started
+    
+    async def clear_all_raids():
+        """Clear all raids from the database."""
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            async with db.cursor() as cursor:
+                await cursor.execute('''DELETE FROM raids''')
+                await db.commit()
+
+    async def add_hunter(self, member_id, hunter_id, hunter_name, hunter_health, hunter_level, image, attack, defense, element, weapon_id=None,weapon_level=1):
+        if member_id in self.members and len(self.members[member_id]['hunters']) < 3:
+            stat = await getStatHunter(hunter_id, hunter_level)
+
+            # Initialize base stats
+            hunter_hp = stat.hp
+            hunter_attack = stat.attack
+            hunter_defense = stat.defense
+
+            # If a weapon is provided, fetch its stats and add to base stats
+            if weapon_id:
+                weapon_stat = await getStatWeapon(weapon_id, weapon_level)
+                hunter_hp += weapon_stat['hp']
+                hunter_attack += weapon_stat['attack']
+                hunter_defense += weapon_stat['defense']
+
+            self.members[member_id]['hunters'][hunter_id] = {
+                'id': hunter_id,
+                'name': hunter_name,
+                'health': hunter_hp,
+                'max_health': hunter_hp,
+                'level': hunter_level,
+                'image': image,
+                'attack': hunter_attack,
+                'defense': hunter_defense,
+                'element': element,
+                'weapon': weapon_id  # Storing weapon ID if equipped
+            }
+            
+            await self.save()
+
+    @staticmethod
+    async def initialize():
+        """Initialize the database schema."""
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            async with db.cursor() as cursor:
+                await cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS raids (
+                        channel TEXT PRIMARY KEY,
+                        level INTEGER,
+                        shadow TEXT,
+                        raid_class TEXT,
+                        health INTEGER,
+                        members TEXT,  -- Store members as a JSON string
+                        started INTEGER DEFAULT 0  -- New column to track if the raid has started
+                    )
+                ''')
+                await db.commit()
+
+    @classmethod
+    async def get(cls, channel):
+        """Retrieve a raid from the database."""
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            async with db.cursor() as cursor:
+                await cursor.execute('''
+                    SELECT * FROM raids WHERE channel = ?
+                ''', (channel,))
+                row = await cursor.fetchone()
+                if row:
+                    # Convert members from JSON string to dictionary
+                    members = json.loads(row[5]) if row[5] else {}
+                    started = bool(row[6])  # Convert integer to boolean
+                    raid = cls(row[0], row[1], row[2], row[3], row[4], members, started)
+                    return raid
+                return None
+
+    async def save(self):
+        """Save the raid data to the database."""
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            async with db.cursor() as cursor:
+                # Convert members dictionary to JSON string
+                members_json = json.dumps(self.members)
+                await cursor.execute('''
+                    INSERT OR REPLACE INTO raids (channel, level, shadow, raid_class, health, members, started)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (self.channel, self.level, self.shadow, self.raid_class, self.health, members_json, int(self.started)))
+                await db.commit()
+
+    async def start_raid(self):
+        """Mark the raid as started."""
+        self.started = True
+        await self.save()
+        
+    @classmethod
+    async def spawn_raid(cls, channel: discord.TextChannel, shadow_name: str, level: int = 10):
+
+        shadow_data = cls.load_shadow_data(shadow_name)
+        if not shadow_data:
+            await channel.send(f"Shadow `{shadow_name}` not found in shadows.json.")
+            return None
+
+        # Create the raid instance
+        raid_class = shadow_data['type']
+        raid = cls(
+            channel=channel.id,
+            level=level,
+            shadow=shadow_name,
+            raid_class=raid_class,
+            health=shadow_data["health"]
+        )
+        await raid.save()
+
+        atk = shadow_data["attack"]
+        DEF = shadow_data["defense"]
+        shadow_health = statCalc(raid.level, raid.health)
+        maxhealth = statCalc(raid.level, raid.health)
+        attack = statCalc(raid.level, shadow_data["attack"])
+        defense = statCalc(raid.level, shadow_data["defense"])
+        # Create an embed
+        embed = discord.Embed(
+            title=f"Shadow Raid Spawned!",
+            description=f"Boss: **{shadow_name}**\nLevel: `{str(level)}`\n{getClassEmoji(raid_class)} Element: `{raid_class}`  \n⏱️ __Time Remaining:__ **5** minutes",
+            color=discord.Color.dark_purple()
+        )
+        embed.set_image(url=shadow_data["image"])
+        embed.set_author(name="Raid",icon_url="https://files.catbox.moe/2f0938.png")
+        pb = pbar(shadow_health, shadow_health, 9)
+        embed.add_field(name="Statistics", value=f"<:Swords:1339943683591639194> Attack: `{attack}`\n<:Shield:1339944667067977778> Defense: `{defense}`", inline=True)
+        embed.add_field(name="Health", value=f"{getEmoji('down')}{pb}", inline=False)
+        embed.add_field(name="Hunters [0/5]", value="None")
+        embed.set_footer(text="Server admins can move the spawns to different channels\nExample Usage: sl redirect #channel-1 #channel-2")
+
+        class JoinButtonView(discord.ui.View):
+            def __init__(self, raid):
+                super().__init__(timeout=250)  # Timeout after 250 seconds
+                self.raid = raid
+                self.members_joined = False  # Track if any member has joined
+                self.message = None
+                self.force_start_votes = set()  # Track members who voted to force start
+
+            @discord.ui.button(label="Join Raid", emoji="<:Swords:1339943683591639194>", style=discord.ButtonStyle.secondary)
+            async def join_button(self, button, interaction):
+                member = interaction.user
+                if len(self.raid.members) >= 5:
+                    await interaction.response.send_message("The raid is already full!", ephemeral=True)
+                    return
+
+                if member.id in self.raid.members:
+                    await interaction.response.send_message("You have already joined this raid!", ephemeral=True)
+                    return
+
+                player = await Player.get(member.id)  # Assuming PlayerManager.get fetches the player
+                if not player:
+                    await interaction.response.send_message("Player data not found.", ephemeral=True)
+                    return
+                if player.inc:
+                    await interaction.response.send_message("❌ You are in between a command finish it or wait for it to complete.", ephemeral=True)
+                    return
+
+                # Check if all three party slots are filled
+                required_slots = ["Party_1", "Party_2", "Party_3"]
+                if not all(player.equipped.get(slot) for slot in required_slots):
+                    await interaction.response.send_message(
+                        "You must have all three hunters equipped in your party to join the raid!",
+                        ephemeral=True
+                    )
+                    return
+
+                # Add the member to the raid
+                self.raid.members[member.id] = {
+                    'id': member.id,
+                    'name':member.name,
+                    'damage': 0,
+                    'hunters': {}
+                }
+                for slot_key in required_slots:
+                    hunter_id = player.equipped.get(slot_key)
+                    if hunter_id:
+                        hunter = player.hunters.get(hunter_id)
+                        if hunter:
+                            char = await HeroManager.get(hunter_id)  # Assuming HeroManager.get fetches hunter data
+                            level = hunter.get("level", 1)
+                            health = hunter.get("health", 100)  # Default health if not specified
+                            weapon = hunter.get("weapon")
+                            if weapon and weapon in player.inventory:
+                                weapon_level = player.inventory[weapon]["level"]
+                                await self.raid.add_hunter(member.id, hunter_id, char.name, health, level, char.image, char.attack, char.defense, char.classType,weapon,weapon_level)
+                            else:
+                                await self.raid.add_hunter(member.id, hunter_id, char.name, health, level, char.image, char.attack, char.defense, char.classType)
+
+
+                self.members_joined = True  # Mark that at least one member joined
+                await self.raid.save()
+                await interaction.response.send_message(f"`[{len(self.raid.members)}/5]` | {member.mention} has joined the raid!", ephemeral=False)
+
+                # Update the embed
+                embed.set_field_at(
+                    2,
+                    name=f"Hunters [{len(self.raid.members)}/5]",
+                    value=", ".join([f"<@{m}>" for m in self.raid.members.keys()]) or "None"
+                )
+                await interaction.message.edit(embed=embed, view=self)
+
+            @discord.ui.button(label="0/3 Force Start", emoji="💨", style=discord.ButtonStyle.danger)
+            async def force_start_button(self, button, interaction):
+                member = interaction.user
+
+                # Only allow raid members to vote
+                if member.id not in self.raid.members:
+                    await interaction.response.send_message("You must join the raid before voting to force start!", ephemeral=True)
+                    return
+                await interaction.response.defer()
+                # Add the member's vote
+                if member.id not in self.force_start_votes:
+                    self.force_start_votes.add(member.id)
+                    button.label = f"{len(self.force_start_votes)}/3 Force Start"
+                    await interaction.message.edit(view=self)
+
+                    # Check if enough votes are reached
+                    if len(self.force_start_votes) >= 3:
+                        # Disable buttons and stop the view
+                        self.stop()
+                        for child in self.children:
+                            if isinstance(child, discord.ui.Button):
+                                child.disabled = True
+                        await self.message.edit(view=self)
+                        await self.start_raid_early()
+                else:
+                    await interaction.response.send_message("You have already voted to force start!", ephemeral=True)
+
+            async def start_raid_early(self):
+                """Start the raid early if enough members voted."""
+                msg = ", ".join([f"<@{m}>" for m in self.raid.members.keys()])
+                await self.message.channel.send(f"{msg}\nThe shadow raid has begun early due to force start!")
+
+                for member_id in self.raid.members.keys():
+                    player = await Player.get(member_id)
+                    player.inc = True
+                    await player.save()
+
+                handler = RaidHandler(self.raid, self.message.channel, shadow_data)
+                await handler.start_raid()
+
+            async def on_timeout(self):
+                if not self.members_joined:
+                    await self.message.channel.send("The raid did not start because no one joined.")
+                    async with aiosqlite.connect(DATABASE_PATH) as db:
+                        await db.execute("PRAGMA journal_mode=WAL;")
+                        await db.commit()
+                        await db.execute("DELETE FROM raids WHERE channel = ?", (self.raid.channel,))
+                        await db.commit()
+                else:
+                    msg = ", ".join([f"<@{m}>" for m in self.raid.members.keys()])
+                    await self.message.channel.send(f"{msg}\nThe shadow raid has begun")
+
+                    for member_id in self.raid.members.keys():
+                        player = await Player.get(member_id)
+                        player.inc = True
+                        await player.save()
+
+                    handler = RaidHandler(self.raid, self.message.channel, shadow_data)
+                    await handler.start_raid()
+
+                self.stop()
+                for child in self.children:
+                    if isinstance(child, discord.ui.Button):
+                        child.disabled = True
+                await self.message.edit(view=None)
+        # Send the embed with the button
+        view = JoinButtonView(raid)
+        msg = await channel.send(embed=embed, view=view)
+        view.message = msg
+        return raid
+    
+
+    def load_shadow_data(shadow_name):
+        try:
+            with open("shadows.json", "r") as f:
+                data = json.load(f)
+                return data["shadows"].get(shadow_name)
+        except FileNotFoundError:
+            return None
+        
+    async def add_member(self, member_id, damage):
+        if len(self.members) < 5:
+            self.members[member_id] = {
+                'id': member_id,
+                'damage': damage,
+                'hunters': {}
+            }
+            await self.save()
+
+
+    async def update_damage(self, member_id, damage):
+        if member_id in self.members:
+            self.members[member_id]['damage'] = damage
+            await self.save()
+
+    async def remove_member(self, member_id):
+        if member_id in self.members:
+            del self.members[member_id]
+            await self.save()
+
+    async def update_health(self, health):
+        self.health = health
+        await self.save()
+        

@@ -1,0 +1,302 @@
+[
+   {
+      "id": "enemy_1",
+      "name": "Iron Knight",
+      "attack": 1000,
+      "defense": 1000,
+      "hp": 5000,
+      "image": "https://files.catbox.moe/jvxvcr.png",
+      "element": "light",
+      "tier": 1
+    },
+    {
+      "id": "enemy_2",
+      "name": "Frost Spider",
+      "attack": 1000,
+      "defense": 1000,
+      "hp": 5000,
+      "image": "https://files.catbox.moe/jvxvcr.png",
+      "element": "water",
+      "tier": 1
+    },
+    {
+      "id": "enemy_3",
+      "name": "Red Orc",
+      "attack": 1200,
+      "defense": 2000,
+      "hp": 15000,
+      "image": "https://files.catbox.moe/jvxvcr.png",
+      "element": "fire",
+      "tier": 2
+    },
+    {
+      "id": "enemy_4",
+      "name": "Blue Venom Snake",
+      "attack": 1200,
+      "defense": 2000,
+      "hp": 15000,
+      "image": "https://files.catbox.moe/jvxvcr.png",
+      "element": "water",
+      "tier": 2
+    },
+    {
+      "id": "enemy_5",
+      "name": "High Orc Warrior",
+      "attack": 1500,
+      "defense": 2000,
+      "hp": 20000,
+      "image": "https://example.com/high_orc_warrior.png",
+      "element": "dark",
+      "tier": 3
+    },
+    {
+      "id": "enemy_6",
+      "name": "Ice Elf Archer",
+      "attack": 1500,
+      "defense": 2000,
+      "hp": 20000,
+      "image": "https://example.com/ice_elf_archer.png",
+      "element": "wind",
+      "tier": 3
+    },
+    {
+      "id": "enemy_7",
+      "name": "Frost Monarch",
+      "attack": 3000,
+      "defense": 3000,
+      "hp": 30000,
+      "image": "https://example.com/frost_monarch.png",
+      "element": "water",
+      "tier": 4
+    },
+    {
+      "id": "enemy_8",
+      "name": "Shadow Monarch",
+      "attack": 3000,
+      "defense": 3000,
+      "hp": 30000,
+      "image": "https://example.com/shadow_monarch.png",
+      "element": "dark",
+      "tier": 4
+    },
+    {
+      "id": "enemy_9",
+      "name": "Flame Monarch",
+      "attack": 3200,
+      "defense": 2800,
+      "hp": 32000,
+      "image": "https://example.com/flame_monarch.png",
+      "element": "fire",
+      "tier": 4
+    },
+    {
+      "id": "enemy_10",
+      "name": "Storm Monarch",
+      "attack": 2800,
+      "defense": 3200,
+      "hp": 28000,
+      "image": "https://example.com/storm_monarch.png",
+      "element": "wind",
+      "tier": 4
+    },
+    {
+      "id": "enemy_11",
+      "name": "Earth Monarch",
+      "attack": 2600,
+      "defense": 3600,
+      "hp": 35000,
+      "image": "https://example.com/earth_monarch.png",
+      "element": "earth",
+      "tier": 4
+    },
+    {
+      "id": "enemy_12",
+      "name": "Light Monarch",
+      "attack": 3400,
+      "defense": 2600,
+      "hp": 30000,
+      "image": "https://example.com/light_monarch.png",
+      "element": "light",
+      "tier": 4
+    },
+    {
+      "id": "enemy_13",
+      "name": "Ancient Fire Dragon",
+      "attack": 4500,
+      "defense": 4000,
+      "hp": 45000,
+      "image": "https://example.com/ancient_fire_dragon.png",
+      "element": "fire",
+      "tier": 5
+    },
+    {
+      "id": "enemy_14",
+      "name": "Leviathan",
+      "attack": 4200,
+      "defense": 4300,
+      "hp": 48000,
+      "image": "https://example.com/leviathan.png",
+      "element": "water",
+      "tier": 5
+    },
+    {
+      "id": "enemy_15",
+      "name": "Sky Sovereign",
+      "attack": 4000,
+      "defense": 4500,
+      "hp": 42000,
+      "image": "https://example.com/sky_sovereign.png",
+      "element": "wind",
+      "tier": 5
+    },
+    {
+      "id": "enemy_16",
+      "name": "Titan Golem",
+      "attack": 3800,
+      "defense": 5000,
+      "hp": 55000,
+      "image": "https://example.com/titan_golem.png",
+      "element": "earth",
+      "tier": 5
+    },
+    {
+      "id": "enemy_17",
+      "name": "Seraph Guardian",
+      "attack": 4800,
+      "defense": 3700,
+      "hp": 40000,
+      "image": "https://example.com/seraph_guardian.png",
+      "element": "light",
+      "tier": 5
+    },
+    {
+      "id": "enemy_18",
+      "name": "Void Reaper",
+      "attack": 4600,
+      "defense": 4200,
+      "hp": 46000,
+      "image": "https://example.com/void_reaper.png",
+      "element": "dark",
+      "tier": 5
+    },
+    {
+      "id": "enemy_19",
+      "name": "Inferno Emperor",
+      "attack": 6000,
+      "defense": 5500,
+      "hp": 65000,
+      "image": "https://example.com/inferno_emperor.png",
+      "element": "fire",
+      "tier": 6
+    },
+    {
+      "id": "enemy_20",
+      "name": "Abyssal Kraken",
+      "attack": 5800,
+      "defense": 6000,
+      "hp": 70000,
+      "image": "https://example.com/abyssal_kraken.png",
+      "element": "water",
+      "tier": 6
+    },
+    {
+      "id": "enemy_21",
+      "name": "Hurricane Lord",
+      "attack": 5500,
+      "defense": 6200,
+      "hp": 62000,
+      "image": "https://example.com/hurricane_lord.png",
+      "element": "wind",
+      "tier": 6
+    },
+    {
+      "id": "enemy_22",
+      "name": "Mountain King",
+      "attack": 5200,
+      "defense": 6800,
+      "hp": 75000,
+      "image": "https://example.com/mountain_king.png",
+      "element": "earth",
+      "tier": 6
+    },
+    {
+      "id": "enemy_23",
+      "name": "Divine Avatar",
+      "attack": 6500,
+      "defense": 5000,
+      "hp": 60000,
+      "image": "https://example.com/divine_avatar.png",
+      "element": "light",
+      "tier": 6
+    },
+    {
+      "id": "enemy_24",
+      "name": "Shadow Overlord",
+      "attack": 6200,
+      "defense": 5800,
+      "hp": 68000,
+      "image": "https://example.com/shadow_overlord.png",
+      "element": "dark",
+      "tier": 6
+    },
+    {
+      "id": "enemy_25",
+      "name": "Primordial Flame",
+      "attack": 8000,
+      "defense": 7500,
+      "hp": 90000,
+      "image": "https://example.com/primordial_flame.png",
+      "element": "fire",
+      "tier": 7
+    },
+    {
+      "id": "enemy_26",
+      "name": "World Serpent",
+      "attack": 7800,
+      "defense": 8000,
+      "hp": 95000,
+      "image": "https://example.com/world_serpent.png",
+      "element": "water",
+      "tier": 7
+    },
+    {
+      "id": "enemy_27",
+      "name": "Tempest God",
+      "attack": 7500,
+      "defense": 8200,
+      "hp": 88000,
+      "image": "https://example.com/tempest_god.png",
+      "element": "wind",
+      "tier": 7
+    },
+    {
+      "id": "enemy_28",
+      "name": "Earth Mother",
+      "attack": 7200,
+      "defense": 9000,
+      "hp": 100000,
+      "image": "https://example.com/earth_mother.png",
+      "element": "earth",
+      "tier": 7
+    },
+    {
+      "id": "enemy_29",
+      "name": "Celestial Judge",
+      "attack": 8500,
+      "defense": 7000,
+      "hp": 85000,
+      "image": "https://example.com/celestial_judge.png",
+      "element": "light",
+      "tier": 7
+    },
+    {
+      "id": "enemy_30",
+      "name": "Void Emperor",
+      "attack": 8200,
+      "defense": 7800,
+      "hp": 92000,
+      "image": "https://example.com/void_emperor.png",
+      "element": "dark",
+      "tier": 7
+    }
+]

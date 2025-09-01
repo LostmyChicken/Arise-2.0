@@ -99,12 +99,12 @@ async def init_players_db():
                 defense INTEGER DEFAULT 10,
                 hp INTEGER DEFAULT 100,
                 mp INTEGER DEFAULT 10,
-                gold INTEGER DEFAULT 0,
+                gold INTEGER DEFAULT 10000,
                 precision INTEGER DEFAULT 10,
-                diamond INTEGER DEFAULT 0,
-                stone INTEGER DEFAULT 0,
-                ticket INTEGER DEFAULT 0,
-                crystals INTEGER DEFAULT 0,
+                diamond INTEGER DEFAULT 10000,
+                stone INTEGER DEFAULT 500,
+                ticket INTEGER DEFAULT 50,
+                crystals INTEGER DEFAULT 100,
                 premiumT INTEGER DEFAULT 0,
                 premium BOOLEAN DEFAULT FALSE,
                 quests TEXT DEFAULT '{}',
@@ -314,3 +314,7 @@ async def update_player_status(player_id: str, is_online: bool, activity: str = 
         VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
     '''
     return await db_service.execute_query('players', query, (player_id, is_online, activity, socket_id))
+
+async def get_db_connection():
+    """Get database connection for players database"""
+    return await db_service.get_connection('players')

@@ -32,10 +32,32 @@ class ApiService {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('arise_token');
-          localStorage.removeItem('arise_user');
-          window.location.href = '/login';
+          console.warn('🔐 Authentication failed:', error.response?.data?.detail || 'Token may be expired');
+
+          // Only clear auth and redirect if we're not already on auth pages
+          const currentPath = window.location.pathname;
+          const isAuthPage = currentPath.includes('/login') || currentPath.includes('/register');
+
+          if (!isAuthPage) {
+            console.log('🔄 Clearing authentication and redirecting to login...');
+            localStorage.removeItem('arise_token');
+            localStorage.removeItem('arise_user');
+
+            // Show a brief message before redirecting
+            const message = document.createElement('div');
+            message.style.cssText = `
+              position: fixed; top: 20px; right: 20px; z-index: 9999;
+              background: #ef4444; color: white; padding: 12px 20px;
+              border-radius: 8px; font-family: system-ui;
+            `;
+            message.textContent = 'Session expired. Redirecting to login...';
+            document.body.appendChild(message);
+
+            setTimeout(() => {
+              document.body.removeChild(message);
+              window.location.href = '/login';
+            }, 2000);
+          }
         }
         return Promise.reject(error);
       }

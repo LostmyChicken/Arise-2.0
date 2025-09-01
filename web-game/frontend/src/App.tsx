@@ -15,6 +15,14 @@ import GuildPage from './pages/GuildPage';
 import StoryPage from './pages/StoryPage';
 import InventoryPage from './pages/InventoryPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import SkillsPage from './pages/SkillsPage';
+import WorldBossPage from './pages/WorldBossPage';
+import GatesPage from './pages/GatesPage';
+import UpgradePage from './pages/UpgradePage';
+import TradingPage from './pages/TradingPage';
+import ArenaPage from './pages/ArenaPage';
+import DailyPage from './pages/DailyPage';
+import MarketPage from './pages/MarketPage';
 
 // Components
 import Navbar from './components/Navbar';
@@ -50,99 +58,49 @@ function AppContent() {
     return <LoadingScreen />;
   }
 
-  return (
-    <>
-      {user && <Navbar />}
-      <main className={user ? 'pt-16' : ''}>
+  if (!user) {
+    return (
+      <main>
         <Routes>
           {/* Public routes */}
-          <Route 
-            path="/login" 
-            element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} 
-          />
-          <Route 
-            path="/register" 
-            element={!user ? <RegisterPage /> : <Navigate to="/dashboard" />} 
-          />
-          
-          {/* Protected routes */}
-          <Route 
-            path="/dashboard" 
-            element={user ? (
-              <SocketProvider>
-                <DashboardPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/profile" 
-            element={user ? (
-              <SocketProvider>
-                <ProfilePage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/battle" 
-            element={user ? (
-              <SocketProvider>
-                <BattlePage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/gacha" 
-            element={user ? (
-              <SocketProvider>
-                <GachaPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/guild" 
-            element={user ? (
-              <SocketProvider>
-                <GuildPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/story" 
-            element={user ? (
-              <SocketProvider>
-                <StoryPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/inventory" 
-            element={user ? (
-              <SocketProvider>
-                <InventoryPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/leaderboard" 
-            element={user ? (
-              <SocketProvider>
-                <LeaderboardPage />
-              </SocketProvider>
-            ) : <Navigate to="/login" />} 
-          />
-          
-          {/* Default redirect */}
-          <Route 
-            path="/" 
-            element={<Navigate to={user ? "/dashboard" : "/login"} />} 
-          />
-          <Route 
-            path="*" 
-            element={<Navigate to={user ? "/dashboard" : "/login"} />} 
-          />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </main>
-    </>
+    );
+  }
+
+  return (
+    <SocketProvider>
+      <Navbar />
+      <main className="pt-16">
+        <Routes>
+          {/* Protected routes */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/battle" element={<BattlePage />} />
+          <Route path="/gacha" element={<GachaPage />} />
+          <Route path="/guild" element={<GuildPage />} />
+          <Route path="/story" element={<StoryPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
+          <Route path="/worldboss" element={<WorldBossPage />} />
+          <Route path="/gates" element={<GatesPage />} />
+          <Route path="/upgrade" element={<UpgradePage />} />
+          <Route path="/trading" element={<TradingPage />} />
+          <Route path="/arena" element={<ArenaPage />} />
+          <Route path="/daily" element={<DailyPage />} />
+          <Route path="/market" element={<MarketPage />} />
+
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </main>
+    </SocketProvider>
   );
 }
 

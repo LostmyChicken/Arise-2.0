@@ -51,8 +51,8 @@ const StoryPage: React.FC = () => {
   const loadStoryData = async () => {
     try {
       const [chaptersResponse, progressResponse] = await Promise.all([
-        api.get('/api/story/chapters'),
-        api.get('/api/story/progress')
+        api.get('/story/chapters'),
+        api.get('/story/progress')
       ]);
       
       setChapters(chaptersResponse.data.chapters);
@@ -186,7 +186,7 @@ const StoryPage: React.FC = () => {
     
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const response = await api.post('/api/story/complete', {
+      const response = await api.post('/story/complete', {
         chapter_id: selectedChapter.id,
         choice_id: choiceId
       });
@@ -265,15 +265,15 @@ const StoryPage: React.FC = () => {
             <h3 className="text-xl font-bold mb-4 text-white">Campaign Progress</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-blue-400">{progress.completed_chapters.length}</div>
+                <div className="text-2xl font-bold text-blue-400">{progress.completed_chapters?.length || 0}</div>
                 <div className="text-sm text-gray-400">Chapters Completed</div>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-green-400">{progress.total_experience.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-400">{(progress.total_experience || 0).toLocaleString()}</div>
                 <div className="text-sm text-gray-400">Total EXP Earned</div>
               </div>
               <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-yellow-400">{progress.total_gold.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-yellow-400">{(progress.total_gold || 0).toLocaleString()}</div>
                 <div className="text-sm text-gray-400">Total Gold Earned</div>
               </div>
             </div>
@@ -334,7 +334,7 @@ const StoryPage: React.FC = () => {
                   <div className="text-right text-sm">
                     <div className="text-blue-400">{chapter.experience_reward} EXP</div>
                     <div className="text-yellow-400">{chapter.gold_reward} Gold</div>
-                    {chapter.item_rewards.length > 0 && (
+                    {chapter.item_rewards?.length > 0 && (
                       <div className="text-purple-400 flex items-center justify-end">
                         <GiftIcon className="w-4 h-4 mr-1" />
                         {chapter.item_rewards.length} Items

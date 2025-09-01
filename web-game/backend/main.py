@@ -12,8 +12,19 @@ from api.player import player_router
 from api.game import game_router
 from api.battle import battle_router
 from api.gacha import gacha_router
-from api.guild import guild_router
+
 from api.story import story_router
+from api.simple_endpoints import (
+    skills_router, upgrade_router, gates_router, arena_router,
+    inventory_router, leaderboard_router, daily_router
+)
+from api.simple_endpoints import guild_router as simple_guild_router
+from api.worldboss import router as worldboss_router
+from api.trading import router as trading_router
+from api.training import router as training_router
+
+from api.market import router as market_router
+from api.gamedata import router as gamedata_router
 from services.auth_service import verify_token
 from services.database_service import init_database
 
@@ -74,8 +85,20 @@ app.include_router(player_router, prefix="/api/player", tags=["Player"])
 app.include_router(game_router, prefix="/api/game", tags=["Game"])
 app.include_router(battle_router, prefix="/api/battle", tags=["Battle"])
 app.include_router(gacha_router, prefix="/api/gacha", tags=["Gacha"])
-app.include_router(guild_router, prefix="/api/guild", tags=["Guild"])
+app.include_router(simple_guild_router, prefix="/api", tags=["Guild"])
 app.include_router(story_router, prefix="/api/story", tags=["Story"])
+app.include_router(skills_router, prefix="/api", tags=["Skills"])
+app.include_router(upgrade_router, prefix="/api", tags=["Upgrade"])
+app.include_router(worldboss_router, prefix="/api", tags=["World Boss"])
+app.include_router(training_router, prefix="/api", tags=["Training"])
+app.include_router(gates_router, prefix="/api", tags=["Gates"])
+app.include_router(trading_router, prefix="/api", tags=["Trading"])
+app.include_router(arena_router, prefix="/api", tags=["Arena"])
+app.include_router(inventory_router, prefix="/api", tags=["Inventory"])
+app.include_router(leaderboard_router, prefix="/api", tags=["Leaderboard"])
+app.include_router(daily_router, prefix="/api", tags=["Daily"])
+app.include_router(market_router, prefix="/api", tags=["Market"])
+app.include_router(gamedata_router, prefix="/api", tags=["Game Data"])
 
 # Serve static files (frontend build)
 if os.path.exists("../frontend/build"):
@@ -97,7 +120,7 @@ async def health_check():
 
 # Socket.IO event handlers
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, environ, auth):
     """Handle client connection"""
     print(f"🔌 Client {sid} connected")
     await sio.emit('connected', {'message': 'Welcome to Arise!'}, room=sid)

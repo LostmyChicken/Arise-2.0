@@ -1,21 +1,53 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List
 import random
 import json
+import os
+from pathlib import Path
 
 from services.player_service import player_service
+from services.auth_service import get_current_user
 
 router = APIRouter()
 
 class GachaPull(BaseModel):
-    pull_type: str  # single, multi
-    gacha_type: str  # hunter, weapon, mixed
+    pull_type: str  # single, ten
+    currency: str   # gems, tickets
 
-@router.post("/pull/{player_id}")
-async def gacha_pull(player_id: str, pull_data: GachaPull):
+# Load hunters data
+def load_hunters_data():
+    """Load hunters data from JSON file"""
+    try:
+        hunters_path = Path("backend/data/hunters.json")
+        if hunters_path.exists():
+            with open(hunters_path, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading hunters data: {e}")
+
+    # Fallback mock data
+    return [
+        {
+            "id": "sung_jinwoo",
+            "name": "Sung Jin-Woo",
+            "rarity": "SSR",
+            "classType": "Dark",
+            "type": "Assassin",
+            "image": "https://files.catbox.moe/example.jpg",
+            "health": 2500,
+            "attack": 1200,
+            "defense": 800
+        }
+    ]
+
+HUNTERS_DATA = load_hunters_data()
+
+@router.post("/pull")
+async def gacha_pull(pull_data: GachaPull, current_user: dict = Depends(get_current_user)):
     """Perform a gacha pull"""
     try:
+        player_id = current_user["player_id"]
         player = await player_service.get_player(player_id)
         if not player:
             raise HTTPException(
@@ -23,33 +55,42 @@ async def gacha_pull(player_id: str, pull_data: GachaPull):
                 detail="Player not found"
             )
         
-        # Determine number of pulls
-        num_pulls = 10 if pull_data.pull_type == "multi" else 1
-        ticket_cost = 10 if pull_data.pull_type == "multi" else 1
-        
-        # Check if player has enough tickets
-        if player["ticket"] < ticket_cost:
+        # Determine number of pulls and cost
+        num_pulls = 10 if pull_data.pull_type == "ten" else 1
+
+        # Define costs (matching your Discord bot)
+        costs = {
+            'single': {'gems': 300, 'tickets': 1},
+            'ten': {'gems': 2700, 'tickets': 10}
+        }
+
+        cost = costs[pull_data.pull_type][pull_data.currency]
+
+        # Check if player has enough resources
+        if pull_data.currency == 'gems':
+            current_amount = player.get('diamond', 0)  # Backend uses 'diamond'
+        else:  # tickets
+            current_amount = player.get('ticket', 0)   # Backend uses 'ticket'
+
+        if current_amount < cost:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Not enough tickets"
+                detail=f"Insufficient {pull_data.currency}"
             )
         
-        # Perform pulls
+        # Perform pulls (always pull hunters for now)
         results = []
         for _ in range(num_pulls):
-            if pull_data.gacha_type == "hunter":
-                result = await pull_hunter(player_id)
-            elif pull_data.gacha_type == "weapon":
-                result = await pull_weapon(player_id)
-            else:  # mixed
-                result = await pull_mixed(player_id)
-            
+            result = await pull_hunter(player_id)
             results.append(result)
         
-        # Deduct tickets
-        await player_service.update_player(player_id, {
-            "ticket": player["ticket"] - ticket_cost
-        })
+        # Deduct cost from player resources
+        new_amount = current_amount - cost
+        field_name = 'diamond' if pull_data.currency == 'gems' else 'ticket'
+
+        # Update player resources
+        update_data = {field_name: new_amount}
+        await player_service.update_player(player_id, update_data)
         
         # Add items to player inventory
         for result in results:
@@ -71,11 +112,17 @@ async def gacha_pull(player_id: str, pull_data: GachaPull):
             elif result["type"] == "weapon" or result["type"] == "item":
                 await player_service.add_item(player_id, result["id"], 1)
         
-        return {
-            "results": results,
-            "tickets_spent": ticket_cost,
-            "remaining_tickets": player["ticket"] - ticket_cost
-        }
+        # Return format expected by frontend
+        if pull_data.pull_type == "single":
+            return {
+                "result": results[0],
+                "remaining_currency": new_amount
+            }
+        else:
+            return {
+                "results": results,
+                "remaining_currency": new_amount
+            }
         
     except HTTPException:
         raise
@@ -123,34 +170,37 @@ async def get_gacha_history(player_id: str, limit: int = 20):
 async def pull_hunter(player_id: str) -> Dict[str, Any]:
     """Pull a random hunter"""
     
-    # Sample hunter pool
-    hunters = {
-        "common": [
-            {"id": "basic_hunter", "name": "Basic Hunter", "rarity": "Common"},
-            {"id": "trainee_hunter", "name": "Trainee Hunter", "rarity": "Common"},
-        ],
-        "rare": [
-            {"id": "skilled_hunter", "name": "Skilled Hunter", "rarity": "Rare"},
-            {"id": "veteran_hunter", "name": "Veteran Hunter", "rarity": "Rare"},
-        ],
-        "epic": [
-            {"id": "cha_haein", "name": "Cha Hae-In", "rarity": "Epic"},
-            {"id": "baek_yoonho", "name": "Baek Yoon-Ho", "rarity": "Epic"},
-        ],
-        "legendary": [
-            {"id": "sung_jinwoo", "name": "Sung Jin-Woo", "rarity": "Legendary"},
-            {"id": "thomas_andre", "name": "Thomas Andre", "rarity": "Legendary"},
-        ]
-    }
-    
-    rarity = determine_rarity()
-    hunter = random.choice(hunters[rarity])
+    # Determine rarity based on rates (matching Discord bot)
+    rand = random.random()
+    if rand < 0.03:  # 3% Legendary (SSR)
+        target_rarity = "SSR"
+    elif rand < 0.15:  # 12% Epic (SR)
+        target_rarity = "SR"
+    elif rand < 0.40:  # 25% Rare (R)
+        target_rarity = "R"
+    else:  # 60% Common (N)
+        target_rarity = "N"
+
+    # Filter hunters by rarity from real data
+    available_hunters = [h for h in HUNTERS_DATA if h.get('rarity', 'N') == target_rarity]
+    if not available_hunters:
+        # Fallback to any hunter if no hunters of target rarity
+        available_hunters = HUNTERS_DATA
+
+    # Select random hunter
+    hunter = random.choice(available_hunters)
     
     return {
         "type": "hunter",
-        "id": hunter["id"],
-        "name": hunter["name"],
-        "rarity": hunter["rarity"],
+        "id": hunter.get("id", f"hunter_{random.randint(1, 100)}"),
+        "name": hunter.get("name", f"Hunter {random.randint(1, 100)}"),
+        "rarity": hunter.get("rarity", target_rarity),
+        "classType": hunter.get("classType", "Dark"),
+        "hunterType": hunter.get("type", "Assassin"),
+        "image": hunter.get("image", "https://via.placeholder.com/150"),
+        "health": hunter.get("health", 1000),
+        "attack": hunter.get("attack", 500),
+        "defense": hunter.get("defense", 300),
         "is_new": True  # TODO: Check if player already has this hunter
     }
 

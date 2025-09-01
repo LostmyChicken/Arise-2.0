@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../services/api';
 import toast from 'react-hot-toast';
+import { IMAGES, getRandomCharacter } from '../constants/images';
+import GameBackground from '../components/GameBackground';
 import {
   GiftIcon,
   BookOpenIcon,
@@ -140,8 +142,9 @@ const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+    <GameBackground>
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
@@ -154,8 +157,18 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Main Stats */}
           <div className="lg:col-span-2 card">
-            <h2 className="text-xl font-semibold text-white mb-4">Hunter Profile</h2>
-            
+            <div className="flex items-center mb-6">
+              <img
+                src={IMAGES.PROFILES.DEFAULT_PROFILE}
+                alt="Hunter Profile"
+                className="w-16 h-16 profile-image mr-4"
+              />
+              <div>
+                <h2 className="text-xl font-semibold text-white">Hunter Profile</h2>
+                <p className="text-arise-gold font-medium">{profile.username}</p>
+              </div>
+            </div>
+
             {/* Level and XP */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -319,8 +332,9 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </GameBackground>
   );
 };
 

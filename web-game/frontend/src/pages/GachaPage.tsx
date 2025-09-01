@@ -7,6 +7,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import { IMAGES, CHARACTER_RARITY, getRandomCharacter } from '../constants/images';
+import GameBackground from '../components/GameBackground';
 
 // Custom GemIcon
 const GemIcon = ({ className }: { className?: string }) => (
@@ -62,7 +64,7 @@ const GachaPage: React.FC = () => {
 
   const loadGachaRates = async () => {
     try {
-      const response = await api.get('/api/gacha/rates');
+      const response = await api.get('/gacha/rates');
       setRates(response.data);
     } catch (error) {
       console.error('Failed to load gacha rates:', error);
@@ -90,15 +92,18 @@ const GachaPage: React.FC = () => {
 
   const loadPlayerResources = async () => {
     try {
-      const response = await api.get('/api/player/profile');
+      const response = await api.get('/player/profile');
+      const profileData = response.data.profile || response.data;
+      const resources = profileData.resources || {};
+
       setPlayerResources({
-        gems: response.data.gems || 1000,
-        tickets: response.data.tickets || 10
+        gems: resources.diamonds || resources.diamond || profileData.diamond || 5000,
+        tickets: resources.tickets || resources.ticket || profileData.ticket || 20
       });
     } catch (error) {
       console.error('Failed to load player resources:', error);
-      // Mock data for demo
-      setPlayerResources({ gems: 1000, tickets: 10 });
+      // Mock data for demo with generous amounts for testing
+      setPlayerResources({ gems: 5000, tickets: 20 });
     }
   };
 
@@ -112,7 +117,7 @@ const GachaPage: React.FC = () => {
     setCurrentReveal(0);
 
     try {
-      const response = await api.post('/api/gacha/pull', {
+      const response = await api.post('/gacha/pull', {
         pull_type: pullType,
         currency: currency
       });
@@ -238,13 +243,33 @@ const GachaPage: React.FC = () => {
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
+  const getCharacterImageByRarity = (rarity: string) => {
+    const rarityKey = rarity.toUpperCase() as keyof typeof CHARACTER_RARITY;
+    const characters = CHARACTER_RARITY[rarityKey];
+    if (characters && characters.length > 0) {
+      return characters[Math.floor(Math.random() * characters.length)];
+    }
+    return getRandomCharacter();
+  };
+
   const canAfford = (pullType: 'single' | 'ten', currency: 'gems' | 'tickets') => {
-    if (!rates) return false;
-    
-    const cost = pullType === 'single' ? 
-      rates.costs[`single_pull_${currency}` as keyof typeof rates.costs] :
-      rates.costs[`ten_pull_${currency}` as keyof typeof rates.costs];
-    
+    if (!rates || !rates.costs) return false;
+
+    // Provide default values if rates properties are undefined
+    const defaultCosts = {
+      single_pull_gems: 300,
+      single_pull_tickets: 1,
+      ten_pull_gems: 2700,
+      ten_pull_tickets: 10
+    };
+
+    const costKey = `single_pull_${currency}` as keyof typeof rates.costs;
+    const tenCostKey = `ten_pull_${currency}` as keyof typeof rates.costs;
+
+    const cost = pullType === 'single' ?
+      (rates.costs[costKey] || defaultCosts[costKey]) :
+      (rates.costs[tenCostKey] || defaultCosts[tenCostKey]);
+
     return playerResources[currency] >= cost;
   };
 
@@ -256,8 +281,9 @@ const GachaPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+    <GameBackground variant="gacha">
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 text-white">🎲 Gacha Summons</h1>
@@ -314,11 +340,17 @@ const GachaPage: React.FC = () => {
                     } ${index === currentReveal ? 'animate-bounce' : ''}`}
                   >
                     <div className="text-center p-4">
-                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-white/20 flex items-center justify-center">
+                      <div className="w-16 h-16 mx-auto mb-3">
                         {result.type === 'hunter' ? (
-                          <StarIcon className="w-8 h-8 text-white" />
+                          <img
+                            src={getCharacterImageByRarity(result.rarity)}
+                            alt={result.name}
+                            className={`w-full h-full character-image rarity-${result.rarity.toLowerCase()}-glow object-cover`}
+                          />
                         ) : (
-                          <GiftIcon className="w-8 h-8 text-white" />
+                          <div className="w-full h-full rounded-full bg-white/20 flex items-center justify-center">
+                            <GiftIcon className="w-8 h-8 text-white" />
+                          </div>
                         )}
                       </div>
                       <h4 className="font-bold text-white text-sm mb-1">{result.name}</h4>
@@ -360,7 +392,7 @@ const GachaPage: React.FC = () => {
                   className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center text-white"
                 >
                   <GemIcon className="w-5 h-5 mr-2" />
-                  {rates?.costs.single_pull_gems} Gems
+                  {rates?.costs?.single_pull_gems || 300} Gems
                 </button>
                 
                 <button
@@ -369,7 +401,7 @@ const GachaPage: React.FC = () => {
                   className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center text-white"
                 >
                   <TicketIcon className="w-5 h-5 mr-2" />
-                  {rates?.costs.single_pull_tickets} Ticket
+                  {rates?.costs?.single_pull_tickets || 1} Ticket
                 </button>
               </div>
             </div>
@@ -385,7 +417,7 @@ const GachaPage: React.FC = () => {
                   className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center text-white"
                 >
                   <GemIcon className="w-5 h-5 mr-2" />
-                  {rates?.costs.ten_pull_gems} Gems
+                  {rates?.costs?.ten_pull_gems || 2700} Gems
                 </button>
                 
                 <button
@@ -394,7 +426,7 @@ const GachaPage: React.FC = () => {
                   className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center text-white"
                 >
                   <TicketIcon className="w-5 h-5 mr-2" />
-                  {rates?.costs.ten_pull_tickets} Tickets
+                  {rates?.costs?.ten_pull_tickets || 10} Tickets
                 </button>
               </div>
             </div>
@@ -435,8 +467,9 @@ const GachaPage: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </GameBackground>
   );
 };
 

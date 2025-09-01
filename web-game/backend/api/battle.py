@@ -1,15 +1,57 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import json
 import random
 import uuid
 import time
+from pathlib import Path
 
 from services.database_service import db_service
 from services.player_service import player_service
+from services.auth_service import get_current_user
 
 router = APIRouter()
+
+# Load real enemy data from Discord bot
+def load_enemy_data():
+    """Load enemy data from JSON file"""
+    try:
+        # Try multiple possible paths
+        possible_paths = [
+            Path("backend/data/enemy.json"),
+            Path("data/enemy.json"),
+            Path("../data/enemy.json"),
+            Path("web-game/backend/data/enemy.json")
+        ]
+
+        for enemy_path in possible_paths:
+            if enemy_path.exists():
+                print(f"Loading enemy data from: {enemy_path}")
+                with open(enemy_path, 'r') as f:
+                    data = json.load(f)
+                    print(f"Loaded {len(data)} enemies from file")
+                    return data
+
+    except Exception as e:
+        print(f"Error loading enemy data: {e}")
+
+    print("Using fallback enemy data")
+    # Fallback to default enemies if file not found
+    return [
+        {
+            "id": "goblin",
+            "name": "Goblin",
+            "attack": 8,
+            "defense": 3,
+            "hp": 50,
+            "image": "🧌",
+            "element": "earth",
+            "tier": 1
+        }
+    ]
+
+ENEMY_DATA = load_enemy_data()
 
 class BattleStart(BaseModel):
     battle_type: str  # pve, pvp, world_boss
@@ -21,6 +63,47 @@ class BattleAction(BaseModel):
     action_type: str  # attack, skill, item, defend
     skill_id: Optional[str] = None
     item_id: Optional[str] = None
+
+@router.get("/monsters")
+async def get_available_monsters():
+    """Get list of available monsters for battle using real enemy data"""
+
+    # Convert enemy data to monster format for frontend
+    monsters = []
+    for enemy in ENEMY_DATA[:10]:  # Limit to first 10 enemies for now
+        monsters.append({
+            "id": enemy.get("id", "unknown"),
+            "name": enemy.get("name", "Unknown Enemy"),
+            "level": enemy.get("tier", 1) * 5,  # Convert tier to level
+            "hp": enemy.get("hp", 100),
+            "attack": enemy.get("attack", 10),
+            "defense": enemy.get("defense", 5),
+            "xp_reward": enemy.get("hp", 100) // 4,  # XP based on HP
+            "gold_reward": enemy.get("hp", 100) // 2,  # Gold based on HP
+            "image": enemy.get("image", "👹"),
+            "element": enemy.get("element", "neutral"),
+            "tier": enemy.get("tier", 1)
+        })
+
+    # Add some default monsters if no enemy data loaded
+    if not monsters:
+        monsters = [
+            {
+                "id": "goblin",
+                "name": "Goblin",
+                "level": 1,
+                "hp": 50,
+                "attack": 8,
+                "defense": 3,
+                "xp_reward": 25,
+                "gold_reward": 50,
+                "image": "🧌",
+                "element": "earth",
+                "tier": 1
+            }
+        ]
+
+    return {"monsters": monsters}
 
 @router.post("/start")
 async def start_battle(battle_data: BattleStart, player_id: str):

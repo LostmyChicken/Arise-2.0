@@ -21,15 +21,22 @@ class PlayerService:
             'hp': 100,
             'mp': 10,
             'precision': 10,
-            'gold': 1000,  # Starting gold
-            'diamond': 0,
-            'stone': 0,
-            'ticket': 5,  # Starting gacha tickets
-            'crystals': 0,
+            'gold': 10000,  # Starting gold (more generous)
+            'diamond': 10000,   # Generous starting gems for testing
+            'stone': 50,      # Match database schema
+            'ticket': 10,     # Match database schema, more generous
+            'crystals': 25,   # More generous starting crystals
             'premiumT': 0,
             'premium': False,
             'quests': json.dumps({}),
-            'inventory': json.dumps({}),
+            'inventory': json.dumps({
+                'health_potion': 10,
+                'mana_potion': 5,
+                'iron_ore': 20,
+                'magic_crystal': 2,
+                'xp_boost': 1,
+                'gold_boost': 1
+            }),
             'equipped': json.dumps({
                 'Weapon': None, 'Weapon_2': None, 'Basic': None, 'QTE': None, 'Ultimate': None,
                 'Helmet': None, 'Armor': None, 'Gloves': None, 'Boots': None, 'Necklaces': None,
@@ -37,25 +44,14 @@ class PlayerService:
                 'Party_3': None, 'army_1': None, 'army_2': None, 'army_3': None
             }),
             'hunters': json.dumps({}),
-            'statPoints': 10,  # Starting stat points
+
             'skillPoints': 5,   # Starting skill points
-            'last_skill_reset': None,
             'afk': None,
             'afk_level': 1,
             'gacha': 0,
             'skills': json.dumps({}),
             'army_lv': 1,
-            'shadows': json.dumps({}),
-            'oshi_list': json.dumps([]),
-            'locked_items': json.dumps({}),
-            'story_progress': json.dumps({'current_arc': 1, 'current_mission': 1, 'completed_arcs': []}),
-            'achievements': json.dumps([]),
-            'titles': json.dumps([]),
-            'current_title': None,
-            'guild_id': None,
-            'last_daily': None,
-            'created_at': int(time.time()),
-            'last_active': int(time.time())
+            'shadows': json.dumps({})
         }
         
         # Insert player into database
@@ -94,12 +90,12 @@ class PlayerService:
         """Convert database row to dictionary (fallback method)"""
         # This is a simplified conversion - in production you'd want proper column mapping
         columns = [
-            'id', 'username', 'level', 'xp', 'attack', 'defense', 'hp', 'mp', 'precision',
+            'id', 'level', 'xp', 'attack', 'defense', 'hp', 'mp', 'precision',
             'gold', 'diamond', 'stone', 'ticket', 'crystals', 'premiumT', 'premium',
-            'quests', 'inventory', 'equipped', 'hunters', 'statPoints', 'skillPoints',
-            'last_skill_reset', 'afk', 'afk_level', 'gacha', 'skills', 'army_lv',
-            'shadows', 'oshi_list', 'locked_items', 'story_progress', 'achievements',
-            'titles', 'current_title', 'guild_id', 'last_daily', 'created_at', 'last_active'
+            'quests', 'inventory', 'equipped', 'hunters', 'skillPoints',
+            'afk', 'afk_level', 'gacha', 'skills', 'army_lv',
+            'shadows', 'fcube', 'icube', 'wcube', 'dcube', 'lcube', 'tos',
+            'gear1', 'gear2', 'gear3', 'gear4'
         ]
         
         return {col: row[i] if i < len(row) else None for i, col in enumerate(columns)}
@@ -122,9 +118,9 @@ class PlayerService:
         
         # Build update query
         set_clause = ', '.join([f"{key} = ?" for key in processed_updates.keys()])
-        query = f"UPDATE players SET {set_clause}, last_active = ? WHERE id = ?"
-        
-        values = list(processed_updates.values()) + [int(time.time()), player_id]
+        query = f"UPDATE players SET {set_clause} WHERE id = ?"
+
+        values = list(processed_updates.values()) + [player_id]
         await db_service.execute_query('players', query, values)
     
     async def add_xp(self, player_id: str, xp_amount: int):

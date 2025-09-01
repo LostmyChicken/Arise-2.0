@@ -7,6 +7,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import { IMAGES, getRandomBoss, getRandomCharacter } from '../constants/images';
+import GameBackground from '../components/GameBackground';
 
 // Custom SwordIcon for attacks
 const SwordIcon = ({ className }: { className?: string }) => (
@@ -53,7 +55,7 @@ const BattlePage: React.FC = () => {
 
   const loadMonsters = async () => {
     try {
-      const response = await api.get('/api/battle/monsters');
+      const response = await api.get('/battle/monsters');
       setMonsters(response.data.monsters);
     } catch (error) {
       console.error('Failed to load monsters:', error);
@@ -102,7 +104,7 @@ const BattlePage: React.FC = () => {
   const startBattle = async (monsterId: number) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/battle/start', {
+      const response = await api.post('/battle/start', {
         monster_id: monsterId
       });
       
@@ -151,7 +153,7 @@ const BattlePage: React.FC = () => {
     
     setAnimating(true);
     try {
-      const response = await api.post(`/api/battle/${battleState.battle_id}/action`, {
+      const response = await api.post(`/battle/${battleState.battle_id}/action`, {
         action: action
       });
       
@@ -405,7 +407,8 @@ const BattlePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8">
+    <GameBackground variant="battle">
+      <div className="p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 text-white">⚔️ Battle Arena</h1>
@@ -417,8 +420,12 @@ const BattlePage: React.FC = () => {
           {monsters.map((monster) => (
             <div key={monster.id} className="card hover:border-purple-500/50 transition-colors">
               <div className="text-center mb-4">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-600 flex items-center justify-center">
-                  <FireIcon className="w-10 h-10 text-white" />
+                <div className="w-20 h-20 mx-auto mb-4">
+                  <img
+                    src={getRandomBoss()}
+                    alt={monster.name}
+                    className="w-full h-full character-image battle-character object-cover"
+                  />
                 </div>
                 <h3 className="text-xl font-bold mb-2 text-white">{monster.name}</h3>
                 <p className={`${getRankColor(monster.rank)} font-semibold mb-1`}>
@@ -465,8 +472,9 @@ const BattlePage: React.FC = () => {
             <p className="text-gray-400 text-lg">Loading monsters...</p>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </GameBackground>
   );
 };
 

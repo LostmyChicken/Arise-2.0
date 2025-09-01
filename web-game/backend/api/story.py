@@ -1,15 +1,89 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import json
 
 from services.player_service import player_service
+from services.auth_service import get_current_user
 
 router = APIRouter()
 
 class StoryProgress(BaseModel):
     arc: int
     mission: int
+
+@router.get("/progress")
+async def get_current_user_story_progress(current_user: dict = Depends(get_current_user)):
+    """Get current user's story progress"""
+    try:
+        player = await player_service.get_player(current_user["player_id"])
+        if not player:
+            # Return default progress for new players
+            story_progress = {
+                "current_arc": 1,
+                "current_mission": 1,
+                "completed_arcs": []
+            }
+        else:
+            story_progress = player.get("story_progress", {
+                "current_arc": 1,
+                "current_mission": 1,
+                "completed_arcs": []
+            })
+
+        return {"story_progress": story_progress}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get story progress: {str(e)}"
+        )
+
+@router.get("/chapters")
+async def get_story_chapters():
+    """Get all story chapters/arcs"""
+    try:
+        # Return story chapters data
+        chapters = [
+            {
+                "id": 1,
+                "name": "The Weakest Hunter",
+                "description": "Sung Jin-Woo's journey begins as the weakest E-rank hunter.",
+                "missions": [
+                    {"id": 1, "name": "First Dungeon", "description": "Enter your first dungeon", "completed": False},
+                    {"id": 2, "name": "System Awakening", "description": "Discover the mysterious system", "completed": False},
+                    {"id": 3, "name": "Level Up", "description": "Gain your first level", "completed": False}
+                ]
+            },
+            {
+                "id": 2,
+                "name": "The System's Power",
+                "description": "Jin-Woo discovers the true power of the system.",
+                "missions": [
+                    {"id": 1, "name": "Daily Quests", "description": "Complete daily training", "completed": False},
+                    {"id": 2, "name": "Penalty Zone", "description": "Survive the penalty zone", "completed": False},
+                    {"id": 3, "name": "Strength Training", "description": "Increase your stats", "completed": False}
+                ]
+            },
+            {
+                "id": 3,
+                "name": "The Red Gate",
+                "description": "A dangerous red gate appears.",
+                "missions": [
+                    {"id": 1, "name": "Red Gate Entry", "description": "Enter the red gate", "completed": False},
+                    {"id": 2, "name": "Ice Elves", "description": "Battle the ice elves", "completed": False},
+                    {"id": 3, "name": "Ice Bear", "description": "Defeat the ice bear boss", "completed": False}
+                ]
+            }
+        ]
+
+        return {"chapters": chapters}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get story chapters: {str(e)}"
+        )
 
 @router.get("/progress/{player_id}")
 async def get_story_progress(player_id: str):

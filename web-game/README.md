@@ -35,6 +35,54 @@ A comprehensive web-based RPG game inspired by the Solo Leveling universe, conve
 3. Start your Solo Leveling journey!
 
 ### For Developers
+
+#### Option 1: One-Click Startup (Recommended)
+
+**For Mac/Linux:**
+```bash
+./start.sh
+```
+
+**For Windows:**
+```batch
+start.bat
+```
+
+#### Option 2: Manual Startup
+
+**Backend:**
+```bash
+cd backend
+python3 main.py
+```
+
+**Frontend (in a new terminal):**
+```bash
+cd frontend
+npm start
+```
+
+## 🛠️ Installation
+
+1. **Install Backend Dependencies:**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+2. **Install Frontend Dependencies:**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+## 🌐 Access Points
+
+- **Web Game:** http://localhost:3000
+- **API Backend:** http://localhost:8000
+- **API Documentation:** http://localhost:8000/docs
+
+### For Developers
 1. Clone the repository
 2. Install dependencies: `npm install` (frontend) and `pip install -r requirements.txt` (backend)
 3. Start the development servers

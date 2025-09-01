@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
+import time
 
 from services.player_service import player_service
 from services.database_service import update_player_status
+from services.auth_service import get_current_user
 
 router = APIRouter()
 
@@ -14,6 +16,64 @@ class StatUpgrade(BaseModel):
 class ItemEquip(BaseModel):
     slot: str
     item_id: Optional[str] = None
+
+@router.get("/profile")
+async def get_current_player_profile(current_user: dict = Depends(get_current_user)):
+    """Get current user's profile data"""
+    try:
+        player = await player_service.get_player(current_user["player_id"])
+        if not player:
+            # Create player if doesn't exist
+            print(f"🔧 Creating missing player profile for {current_user['player_id']}")
+            player = await player_service.create_new_player(
+                current_user["player_id"],
+                current_user["username"]
+            )
+            # Refresh player data from database after creation
+            player = await player_service.get_player(current_user["player_id"]) or player
+
+        # Return comprehensive profile data
+        profile = {
+            "id": player["id"],
+            "username": player.get("username", current_user["username"]),
+            "level": player.get("level", 1),
+            "xp": player.get("xp", 0),
+            "stats": {
+                "attack": player.get("attack", 15),
+                "defense": player.get("defense", 12),
+                "hp": player.get("hp", 150),
+                "mp": player.get("mp", 75),
+                "precision": player.get("precision", 10)
+            },
+            "resources": {
+                "gold": player.get("gold", 10000),
+                "diamonds": player.get("diamond", 100),  # Map to frontend naming
+                "stones": player.get("stone", 50),       # Map to frontend naming
+                "tickets": player.get("ticket", 10),     # Map to frontend naming
+                "crystals": player.get("crystals", 25)
+            },
+            "points": {
+                "skillPoints": player.get("skillPoints", 3)
+            },
+            "progress": {
+                "story_progress": player.get("story_progress", {"current_arc": 1, "current_mission": 1, "completed_arcs": []}),
+                "arena_rank": player.get("arena_rank", 0),
+                "arena_points": player.get("arena_points", 0),
+                "login_streak": player.get("login_streak", 0)
+            },
+            "inventory_count": len(player.get("inventory", {})),
+            "hunters_count": len(player.get("hunters", {})),
+            "guild_id": player.get("guild_id"),
+            "last_active": int(time.time())  # Current timestamp since last_active column doesn't exist
+        }
+
+        return {"profile": profile}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving profile: {str(e)}"
+        )
 
 @router.get("/profile/{player_id}")
 async def get_player_profile(player_id: str):

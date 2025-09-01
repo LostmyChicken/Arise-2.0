@@ -1,0 +1,207 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+@layer base {
+  body {
+    @apply bg-game-bg text-white font-sans;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+      monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-arise-purple hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply bg-arise-gray hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200;
+  }
+
+  .btn-gold {
+    @apply bg-arise-gold hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105;
+  }
+
+  .btn-danger {
+    @apply bg-arise-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-gray-700;
+  }
+
+  .card-hover {
+    @apply card hover:bg-opacity-90 transition-all duration-300 cursor-pointer transform hover:scale-105;
+  }
+
+  .stat-bar {
+    @apply bg-gray-700 rounded-full h-4 overflow-hidden;
+  }
+
+  .stat-fill {
+    @apply h-full transition-all duration-500 ease-out;
+  }
+
+  .rarity-common {
+    @apply border-gray-400 bg-gray-100 text-gray-800;
+  }
+
+  .rarity-rare {
+    @apply border-blue-400 bg-blue-100 text-blue-800;
+  }
+
+  .rarity-epic {
+    @apply border-purple-400 bg-purple-100 text-purple-800;
+  }
+
+  .rarity-legendary {
+    @apply border-yellow-400 bg-yellow-100 text-yellow-800;
+  }
+
+  .game-title {
+    @apply font-game text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-arise-purple to-arise-gold;
+  }
+
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-arise-purple;
+  }
+
+  .glow-effect {
+    @apply animate-glow;
+  }
+
+  .battle-animation {
+    @apply transform transition-all duration-300;
+  }
+
+  .damage-number {
+    @apply absolute text-2xl font-bold text-arise-red animate-bounce pointer-events-none;
+  }
+
+  .heal-number {
+    @apply absolute text-2xl font-bold text-arise-green animate-bounce pointer-events-none;
+  }
+
+  .xp-bar {
+    @apply bg-gradient-to-r from-blue-500 to-purple-600;
+  }
+
+  .hp-bar {
+    @apply bg-gradient-to-r from-red-500 to-red-600;
+  }
+
+  .mp-bar {
+    @apply bg-gradient-to-r from-blue-400 to-blue-500;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #6B46C1 #374151;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-700 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-arise-purple rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-purple-600;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .bg-pattern {
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(107, 70, 193, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Battle effects */
+.shake {
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Gacha pull effects */
+.gacha-card-flip {
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.gacha-card-flip.flipped {
+  transform: rotateY(180deg);
+}
+
+.gacha-card-front,
+.gacha-card-back {
+  backface-visibility: hidden;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.gacha-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Responsive design helpers */
+@media (max-width: 768px) {
+  .game-title {
+    @apply text-2xl;
+  }
+  
+  .card {
+    @apply p-4;
+  }
+}

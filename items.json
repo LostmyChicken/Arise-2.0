@@ -1,0 +1,47 @@
+[
+  {
+    "id": "rare_sword_1",
+    "name": "Steel Sword",
+    "rarity": "Rare",
+    "classType": "Fire",
+    "type": "Weapon",
+    "image": "https://example.com/steel_sword.png",
+    "description": "A basic but reliable steel sword.",
+    "health": 0,
+    "attack": 25,
+    "defense": 10,
+    "speed": 0,
+    "mp": 0,
+    "precision": 5
+  },
+  {
+    "id": "rare_bow_1",
+    "name": "Yew Longbow",
+    "rarity": "Rare",
+    "classType": "Wind",
+    "type": "Weapon",
+    "image": "https://example.com/yew_longbow.png",
+    "description": "A sturdy bow made from yew wood.",
+    "health": 0,
+    "attack": 30,
+    "defense": 5,
+    "speed": 5,
+    "mp": 0,
+    "precision": 10
+  },
+  {
+    "id": "rare_staff_1",
+    "name": "Apprentice's Staff",
+    "rarity": "Rare",
+    "classType": "Water",
+    "type": "Hero_Weapon",
+    "image": "https://example.com/apprentice_staff.png",
+    "description": "A staff for a novice mage.",
+    "health": 10,
+    "attack": 15,
+    "defense": 5,
+    "speed": 0,
+    "mp": 20,
+    "precision": 0
+  }
+]

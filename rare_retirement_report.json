@@ -1,0 +1,35 @@
+{
+  "retirement_date": "2025-08-11 21:57:14",
+  "retired_hunters": 3,
+  "retired_items": 3,
+  "affected_players": 8,
+  "total_migrated_items": 13,
+  "retired_hunter_list": [
+    {
+      "id": "rare_hunter_001",
+      "name": "Iron Knight"
+    },
+    {
+      "id": "rare_hunter_002",
+      "name": "Forest Archer"
+    },
+    {
+      "id": "rare_hunter_003",
+      "name": "Stone Mage"
+    }
+  ],
+  "retired_item_list": [
+    {
+      "id": "rare_item_001",
+      "name": "Iron Sword"
+    },
+    {
+      "id": "rare_item_002",
+      "name": "Wooden Shield"
+    },
+    {
+      "id": "rare_item_003",
+      "name": "Wind Bow"
+    }
+  ]
+}

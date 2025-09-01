@@ -1,0 +1,667 @@
+import discord
+from discord.ext import commands
+import random
+import time
+import asyncio
+from datetime import datetime, timedelta
+from structure.gateBattle import CollaborativeBossBattle, GateBattle
+from utilis.utilis import extractName, getStatWeapon, randM
+from structure.player import Player
+from structure.emoji import getEmoji
+from collections import deque
+BOSS_DATA = {
+    "E": {
+        "name": "Blue Venom-Fanged Kasaka",
+        "hp_multiplier": 2000,  # Adjusted for early-game balance
+        "atk": 80,
+        "def": 50,
+        "rank": "E",
+        "image": "https://static.wikia.nocookie.net/solo-leveling/images/e/ec/Anime_Episode_4_Kasaka_Snake.jpg/revision/latest/scale-to-width-down/1000?cb=20240127204652"
+    },
+    "D": {
+        "name": "Stone Golem",
+        "hp_multiplier": 3000,
+        "atk": 120,
+        "def": 75,
+        "rank": "D",
+        "image": "https://static.wikia.nocookie.net/solo-leveling/images/4/47/StoneGolem1.jpg/revision/latest?cb=20210628163114"
+    },
+    "C": {
+        "name": "Giant Arachnid Buryura",
+        "hp_multiplier": 4000,
+        "atk": 160,
+        "def": 75,
+        "rank": "C",
+        "image": "https://static.wikia.nocookie.net/solo-leveling/images/e/e1/Buryura1.jpg/revision/latest?cb=20210627232921"
+    },
+    "B": {
+        "name": "Armored Minotaur",
+        "hp_multiplier": 5000,
+        "atk": 200,
+        "def": 175,
+        "rank": "B",
+        "image": "https://example.com/b-rank-boss.png"
+    },
+    "A": {
+        "name": "Kargalan",
+        "hp_multiplier": 7000,
+        "atk": 280,
+        "def": 200,
+        "rank": "A",
+        "image": "https://static.wikia.nocookie.net/solo-leveling/images/f/fd/Kargalgan1.jpg/revision/latest?cb=20210624152303"
+    },
+    "S": {
+        "name": "Kamish",
+        "hp_multiplier": 10000,  # Strongest boss, high HP scaling
+        "atk": 400,
+        "def": 300,
+        "rank": "S",
+        "image": "https://static.wikia.nocookie.net/solo-leveling/images/7/72/Kamish2.jpg/revision/latest?cb=20210406203322"
+    }
+}
+
+import asyncio
+
+player_emoji = [
+                    "<:p1:1333792511340187709>", 
+                    "<:p2:1333792508572078121>", 
+                    "<:p3:1333792505795448886>", 
+                    "<:p4:1333792503786373182>"
+                ]
+
+class Gate:
+    def __init__(self, bot, rank, start_time_unix,guild):
+        self.bot = bot
+        self.rank = rank
+        self.start_time_unix = start_time_unix
+        self.participants = {}
+        self.enemies = {}
+        self.tk_enemies = 0
+        self.guild =guild
+        self.logs = deque(maxlen=6)
+        self.boss_battle = None  # Track the collaborative boss battle
+        self.quest_timer = None  # Timer for the quest
+        self.finished = False
+        self._boss_spawn_lock = asyncio.Lock()  # Add lock for boss spawning
+        self.message = None  # Track the main gate message
+
+    async def check_quest_completion(self, interaction: discord.Interaction):
+        """Check if the quest of defeating 10 enemies is completed."""
+        async with self._boss_spawn_lock:  # Prevent multiple triggers
+            if self.tk_enemies >= 10 and not self.finished:
+                self.finished = True
+                if self.message:
+                    try:
+                        await self.message.edit(view=None)
+                    except discord.NotFound:
+                        pass
+                await self.start_collaborative_boss_battle(interaction)
+                
+    async def start_quest_timer(self, message: discord.Message):
+        """Start a 10-second timer for the quest."""
+        await asyncio.sleep(300)  # Wait for 10 seconds
+
+        if self.tk_enemies < 10: 
+            self.finished = True# Check if the quest was not completed
+            await self.handle_quest_failure(message)
+
+    async def handle_quest_failure(self, message: discord.Message):
+        """Handle the quest failure by disabling buttons and sending a failure embed."""
+        if self.finished:  # Don't fail if already completed
+            return
+            
+        self.finished = True
+        for item in message.components:
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
+        await message.edit(view=None)
+
+        # Create the failure embed
+        embed = discord.Embed(
+            title="Dungeon Failed!",
+            description=f"> The hunters failed to complete the {self.rank}-rank gate in time.",
+            color=discord.Color.red()
+        )
+
+        # Add participant stats
+        participants_info = []
+        for user_id, data in self.participants.items():
+            status = "`Dead`" if data['dead'] else "`Alive`"
+            participants_info.append(
+                f"__{data['name']}__\n"
+                f"<:Swords:1339943683591639194> Kills: {data['kills']}\n"
+                f"<:health:1336693127255425024> Health: {data['hp']}/{data['mhp']}"
+            )
+
+        embed.add_field(name="Hunters", value="\n".join(participants_info), inline=False)
+        embed.set_footer(text="Better luck next time!")
+        embed.timestamp = datetime.utcnow()
+
+        await message.channel.send(embed=embed)
+    
+    def print_grid(self):
+        """Prints the grid showing enemy locations with '+' sign."""
+        grid_size = 8  # Assuming an 8x8 grid
+        for y in range(1, grid_size + 1):
+            row = ""
+            for x in range(1, grid_size + 1):
+                if (x, y) in self.enemies:
+                    row += " + "  # Mark enemy location
+                else:
+                    row += " . "  # Empty space
+            print(row)
+    def place_enemies(self, num_enemies):
+        """Randomly place enemies on the grid, ensuring no overlap with players or other enemies."""
+        for _ in range(num_enemies):
+            while True:
+                # Generate random coordinates within the grid bounds
+                x, y = random.randint(1, 8), random.randint(1, 8)
+                
+                # Check if the position is not occupied by a player or another enemy
+                if (x, y) not in self.enemies and not self.is_player_position(x, y):
+                    enemy = randM(self.rank.capitalize())  # Get a random enemy
+                    enemy_name = enemy["name"].replace(" ", "_").lower()  # Normalize name for emoji
+                    enemy_emoji = getEmoji(enemy_name)  # Get corresponding emoji
+                    self.enemies[(x, y)] = {"revealed": False, "type": enemy, "emoji": f" {enemy_emoji}"}
+                    break
+        
+        Gate.print_grid(self)
+        
+    def is_player_position(self, x, y):
+        """Check if the given position (x, y) is occupied by a player."""
+        for data in self.participants.values():
+            if data["x"] == x and data["y"] == y:
+                return True
+        return False
+    
+
+    def generate_grid(self, highlight_user=None):
+        """Generate the grid as a string, optionally highlighting a given user's possible moves."""
+        grid_size = 10
+        grid = [[" ⬛" for _ in range(grid_size)] for _ in range(grid_size)]  # 10x10 grid
+
+        # Mapping of movement directions to emojis for each player
+        direction_emojis = {
+            "p1": {"up": "<:p1u:1342047683426123797>", "down": "<:p1d:1342047405318864949>", "left": "<:p1l:1342047524256481343>", "right": "<:p1r:1342047600098021397>"},
+            "p2": {"up": "<:p2u:1342048079733461073>", "down": "<:p2d:1342048268716343296>", "left": "<:p2l:1342047974099783781>", "right": "<:p2r:1342048361083047987>"},
+            "p3": {"up": "<:p3u:1342048442733563966>", "down": "<:p3d:1342048663765123082>", "left": "<:p3l:1342047861470134334>", "right": "<:p3r:1342048014331678772>"},
+            "p4": {"up": "<:p4u:1342049087050219551>", "down": "<:p4d:1342048591639871547>", "left": "<:p4l:1342049081693966376>", "right": "<:p4r:1342049083908554762>"},
+        }
+
+        # Assign the correct emoji based on player's direction
+        participant_emojis = {}
+        for i, (user_id, data) in enumerate(self.participants.items()):
+            player_key = f"p{i+1}"  # Generate player identifier (p1, p2, etc.)
+            direction = data.get("dir", "down")  # Default to "down" if direction not found
+            participant_emojis[user_id] = direction_emojis.get(player_key, {}).get(direction, "❓")  # Fallback if no emoji
+
+        # Place players on the grid
+        for user_id, data in self.participants.items():
+            x, y = data["x"], data["y"]
+            if 0 <= x < grid_size and 0 <= y < grid_size:
+                grid[x][y] = f" {participant_emojis[user_id]}"
+            else:
+                raise ValueError(f"Player {user_id} is out of bounds at ({x}, {y})")
+
+        # Place enemies
+        for (x, y), enemy in self.enemies.items():
+            if 0 <= x < grid_size and 0 <= y < grid_size:
+                grid[x][y] = enemy["emoji"] if enemy["revealed"] else " ⬛"
+            else:
+                raise ValueError(f"Enemy is out of bounds at ({x}, {y})")
+
+        # Highlight movement options only for the specified user
+        if highlight_user and highlight_user in self.participants:
+            px, py = self.participants[highlight_user]["x"], self.participants[highlight_user]["y"]
+            movement_options = []
+
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Up, Down, Left, Right
+                new_x, new_y = px + dx, py + dy
+                if 0 <= new_x < grid_size and 0 <= new_y < grid_size:
+                    if not self.is_white_border(new_x, new_y) and (new_x, new_y) not in [(p["x"], p["y"]) for p in self.participants.values()] and not (self.enemies.get((new_x, new_y), {}).get("revealed", False)):
+                        movement_options.append((new_x, new_y))
+
+            # Mark movement options with blue box
+            for x, y in movement_options:
+                grid[x][y] = " 🟦"
+
+        # Add borders
+        grid[0][0] = "🔳"
+        for i in range(1, grid_size):
+            grid[0][i] = " 🔲"
+            grid[i][0] = "🔲"
+
+        # Return string representation of the grid
+        return "\n".join("".join(row) for row in grid)
+
+    def is_white_border(self, x, y):
+        """Check if the given position (x, y) is a white border (🔲 or 🔳)."""
+        # White borders are typically at the edges of the grid
+        return (x == 0 or y == 0)
+
+    async def start_collaborative_boss_battle(self, interaction: discord.Interaction):
+        """Start the collaborative boss battle after the quest is completed."""
+        
+        boss_info = BOSS_DATA.get(self.rank, BOSS_DATA["E"])  # Default to E-Rank if invalid
+        
+        boss = {
+            "name": boss_info["name"],
+            "hp": boss_info["hp_multiplier"]*2,  # Scale HP based on players
+            "atk": boss_info["atk"]*2,
+            "def": boss_info["def"]*2,
+            "rank": boss_info["rank"],
+            "image": boss_info["image"]
+        }
+        
+        # Prepare participants for the boss battle
+        participants_data = {}
+        for user_id, data in self.participants.items():
+            player = await Player.get(user_id)
+            for slot in ["Weapon", "Weapon_2"]:
+                weapon_id = player.equipped.get(slot)
+                if weapon_id:
+                    weapon_level = player.inventory[weapon_id]["level"]
+                    print(weapon_level)
+                    weapon_stats = await getStatWeapon(weapon_id, weapon_level)
+                    a = weapon_stats['attack']
+                    d = weapon_stats['defense']
+                    mp = weapon_stats['mp']
+                    hp = weapon_stats['hp']
+                    
+            participants_data[user_id] = {
+                "hp": player.hp+hp,
+                "mhp": player.hp+hp,
+                "mp": player.mp+mp,
+                "atk": player.attack+a,
+                "def": player.defense+d,
+                "skills": player.skills,
+                "kills": data['kills'],
+
+            }
+
+        # Start the boss battle
+        self.boss_battle = CollaborativeBossBattle(self.bot, participants_data, boss,self.guild)
+        await self.boss_battle.start_battle(interaction)
+
+    async def check_quest_completion(self, interaction: discord.Interaction):
+        """Check if the quest of defeating 10 enemies is completed."""
+        if self.tk_enemies >= 10:
+            await self.start_collaborative_boss_battle(interaction)
+
+class GateCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.active_gates = {}  # Store active gates by message ID
+
+    @commands.command(name="gate")
+    async def spawn_gate(self, ctx):
+        player = await Player.get(ctx.author.id)
+        if not player:
+            await ctx.reply("You haven't started the bot yet. Use `/start` to register yourself.", ephemeral=True)
+            return
+
+        if not player.guild:
+            await ctx.reply("<:guild:1329840946975604837> You need to be in a guild to spawn a gate! Use **sl guilds** to view the available guilds.", mention_author=False)
+            return
+
+        if player.key < 1:
+            await ctx.reply("<:Gate_Key:1328337097010184202> You need at least **1** key to spawn a gate!", mention_author=False)
+            return
+
+        player.key -= 1
+        await player.save()
+
+        ranks = ["E", "D", "C", "B", "A", "S"]
+        weights = [40, 25, 15, 10, 7, 3]
+        gate_rank = random.choices(ranks, weights=weights, k=1)[0]
+        start_time_unix = int(time.time() + 90)
+
+        gate = Gate(self.bot, gate_rank, start_time_unix, player.guild)
+        gate.guild = player.guild
+        gate.place_enemies(10)
+
+        gate_info = (
+            f"- **Rank**: {gate.rank} Rank\n"
+            f"- **Starting in**: <t:{gate.start_time_unix}:R>\n"
+            f"- **Registered Guild**: {extractName(player.guild)}"
+        )
+
+        embed = discord.Embed(
+            title="A Gate Has Spawned!",
+            description="> Hunters from the guild must clear it before it becomes unstable.",
+            color=discord.Color.blurple()
+        )
+        embed.set_image(url="https://imgs.search.brave.com/hU-dNmKSPWmHYJewD3-1xJrZaM5hZAFyafCBs2kp9wc/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMxLmNicmltYWdl/cy5jb20vd29yZHBy/ZXNzL3dwLWNvbnRl/bnQvdXBsb2Fkcy8y/MDI0LzA0L2dhdGUt/c29sby1sZXZlbGlu/Zy0xLmpwZWc")
+        embed.add_field(name="Gate Info", value=gate_info, inline=False)
+        embed.add_field(name="Hunters", value="No hunters have joined yet.", inline=False)
+        embed.set_footer(text="Join quickly before the gate starts!")
+        embed.timestamp = datetime.utcnow()
+
+        join_button = discord.ui.Button(label="Join", style=discord.ButtonStyle.blurple)
+        view = discord.ui.View()
+        view.add_item(join_button)
+
+        async def join_gate_callback(interaction: discord.Interaction):
+            if interaction.message.id not in self.active_gates:
+                await interaction.response.send_message("❌ This gate is no longer active!", ephemeral=True)
+                return
+
+            gate_data = self.active_gates[interaction.message.id]
+            join_player = await Player.get(interaction.user.id)
+
+            if not join_player:
+                await interaction.response.send_message("You haven't started the bot yet. Use `/start` to register.", ephemeral=True)
+                return
+
+            if join_player.guild != gate_data.guild:
+                await interaction.response.send_message("❌ You are not a member of this gate's guild!", ephemeral=True)
+                return
+
+            if len(gate_data.participants) >= 4:
+                await interaction.response.send_message("⚠️ This gate is already full! A maximum of 4 hunters can join.", ephemeral=True)
+                return
+
+            if interaction.user.id not in gate_data.participants:
+                gate_data.participants[interaction.user.id] = {
+                    "x": random.randint(9, 9),
+                    "y": random.randint(1, 9),
+                    "mp": join_player.mp,
+                    "mhp": join_player.hp,
+                    "hp": join_player.hp,
+                    "cooldown": 0,
+                    "dead": False,
+                    "kills": 0,
+                    "dir": "up",
+                    "name": f"{interaction.user.name}"
+                }
+
+                participant_emojis = {user_id: player_emoji[i % len(player_emoji)] for i, user_id in enumerate(gate_data.participants)}
+                participants_info = "\n".join(
+                    f"{participant_emojis[user_id]} <@{user_id}>" for user_id in gate_data.participants
+                ).lstrip()
+
+                embed.set_field_at(1, name="Hunters", value=participants_info, inline=False)
+                await interaction.message.edit(embed=embed, view=view)
+                await interaction.response.send_message(f"✅ You joined the {gate.rank}-rank gate!", ephemeral=True)
+            else:
+                await interaction.response.send_message("⚠️ You are already in this gate!", ephemeral=True)
+
+        join_button.callback = join_gate_callback
+
+        message = await ctx.send(embed=embed, view=view)
+        gate.message = message  # Store message reference
+        self.active_gates[message.id] = gate
+
+        try:
+            await asyncio.sleep(gate.start_time_unix - time.time())
+            
+            if message.id in self.active_gates:
+                gate_data = self.active_gates.pop(message.id)
+                await message.edit(view=None)
+
+                if gate_data.participants:
+                    d_embed = discord.Embed(
+                        title="Gate Entered!",
+                        description="> Complete the quest in **5** minutes to battle the boss and earn rewards.\n\n"
+                                   "**Quest**\n"
+                                   f"-# ┗ Find and Neutralize **{gate.tk_enemies}/10** monsters.",
+                        color=discord.Color.blurple()
+                    )
+
+                    participant_emojis = {user_id: player_emoji[i % len(player_emoji)] for i, user_id in enumerate(gate_data.participants)}
+                    participants_info = "\n".join(
+                        f"{participant_emojis[user_id]} <@{user_id}>" for user_id in gate_data.participants
+                    ).lstrip()
+                    
+                    d_embed.add_field(name="Hunters", value=participants_info, inline=False)
+                    grid = gate_data.generate_grid()
+                    d_embed.add_field(name="Grid", value=grid, inline=False)
+
+                    new_message = await ctx.send(embed=d_embed)
+                    move_view = self.create_main_buttons(gate_data, new_message, d_embed)
+                    await new_message.edit(view=move_view)
+                    await gate_data.start_quest_timer(new_message)
+                else:
+                    await message.edit(embed=discord.Embed(
+                        title="❌ Gate Closed!",
+                        description="The gate disappeared as no one joined in time.",
+                        color=discord.Color.red()
+                    ))
+        except Exception as e:
+            print(f"Error in gate timer: {e}")
+            if message.id in self.active_gates:
+                del self.active_gates[message.id]
+
+
+    def create_main_buttons(self, gate, message, embed):
+        view = discord.ui.View()
+
+        async def move_button_callback(interaction: discord.Interaction):
+            if interaction.user.id not in gate.participants:
+                await interaction.response.send_message("❌ You are not part of this gate!", ephemeral=True)
+                return
+
+            player = gate.participants[interaction.user.id]
+
+            mini_grid = gate.generate_grid(interaction.user.id)
+
+            # Embed to display the mini-grid
+            mini_embed = discord.Embed(title="Gate",color=discord.Color.blurple())
+            mini_embed.description = f"> You can move onto the blue boxes\n\n**Grid**\n{mini_grid}"
+            
+            # Show movement buttons
+            move_view = self.create_move_buttons(gate, message, embed)
+
+            await interaction.response.send_message(embed=mini_embed, view=move_view, ephemeral=True)
+
+
+        move_button = discord.ui.Button(label="Move", style=discord.ButtonStyle.primary)
+        move_button.callback = move_button_callback
+        view.add_item(move_button)
+
+        async def stats_button_callback(interaction: discord.Interaction):
+            if interaction.user.id not in gate.participants:
+                await interaction.response.send_message("❌ You are not part of this gate!", ephemeral=True)
+                return
+
+            embed = discord.Embed(title="Dungeon Hunter Stats", color=discord.Color.blue())
+
+            for player_id, stats in gate.participants.items():
+                player = await interaction.client.fetch_user(player_id)  # Fetch user object
+                name = player.name if player else f"Unknown ({player_id})"
+
+                status = "`Dead`" if stats['dead'] else "`Alive`"
+                embed.add_field(
+                    name=f"{name}",
+                    value=(
+                        f"Mana Points: **{stats['mp']}**\n"
+                        f"Status: {status}\n"
+                        f"<:Swords:1339943683591639194> Kills: **{stats['kills']}**\n"  # Add kills to the stats
+                        f"<:health:1336693127255425024> Health: **{stats['hp']}/{stats['mhp']}**\n"
+                    ),
+                    inline=False
+                )
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        stats_button = discord.ui.Button(label="Stats", style=discord.ButtonStyle.secondary)
+        stats_button.callback = stats_button_callback
+        view.add_item(stats_button)
+
+        async def logs_button_callback(interaction: discord.Interaction):
+            if interaction.user.id not in gate.participants:
+                await interaction.response.send_message("❌ You are not part of this gate!", ephemeral=True)
+                return
+            logs = gate.logs
+            logs_embed = discord.Embed(
+                title="Dungeon Logs",
+                description = "\n".join(list(logs)[-6:]) if logs else "No logs yet.",
+                color=discord.Color.green()
+            )
+            await interaction.response.send_message(embed=logs_embed, ephemeral=True)
+
+        logs_button = discord.ui.Button(label="Logs", style=discord.ButtonStyle.success)
+        logs_button.callback = logs_button_callback
+        view.add_item(logs_button)
+
+        async def leave_button_callback(interaction: discord.Interaction):
+            if interaction.user.id not in gate.participants:
+                await interaction.response.send_message("❌ You are not part of this gate!", ephemeral=True)
+                return
+
+            del gate.participants[interaction.user.id]
+            await interaction.response.send_message("🚪 You left the gate!", ephemeral=True)
+            grid = gate.generate_grid()
+            embed.set_field_at(1, name="Grid", value=grid, inline=False)
+            await message.edit(embed=embed, view=self.create_main_buttons(gate, message, embed))
+
+        leave_button = discord.ui.Button(label="Leave", style=discord.ButtonStyle.danger)
+        leave_button.callback = leave_button_callback
+        view.add_item(leave_button)
+
+        return view
+
+    def create_move_buttons(self, gate, message, embed):
+        view = discord.ui.View()
+
+        async def move_callback_with_direction(interaction: discord.Interaction, direction):
+            await self.move_callback(interaction, direction, gate, message, embed)
+
+        directions = {
+            "⬆️": "up",
+            "⬅️": "left",
+            "➡️": "right",
+            "⬇️": "down"
+        }
+
+        for emoji, direction in directions.items():
+            button = discord.ui.Button(emoji=emoji, style=discord.ButtonStyle.primary)
+            button.callback = lambda interaction, d=direction: move_callback_with_direction(interaction, d)
+            view.add_item(button)
+        return view
+
+    async def move_callback(self, interaction: discord.Interaction, direction, gate, message, embed):
+        await interaction.response.defer()
+        
+        if interaction.user.id not in gate.participants:
+            await interaction.response.send_message("❌ You are not part of this gate!", ephemeral=True)
+            return
+
+        player = gate.participants[interaction.user.id]
+        index = list(gate.participants.keys()).index(interaction.user.id)
+
+        player_ = player_emoji[index]  # Get player emoji using index
+        if gate.finished:
+            await interaction.followup.send("Blud click on dismiss message cause this gate is done..",ephemeral=True)
+            return
+        if player.get("dead", False):
+            await interaction.followup.send("☠️ This ain't walking dead..", ephemeral=True)
+            return
+        if player.get("frozen", False):
+            await interaction.followup.send("⚠️ You are engaged in a battle and cannot move!", ephemeral=True)
+            return
+
+        if time.time() < player["cooldown"]:
+            await interaction.followup.send("⏳ You are on cooldown. Wait before moving again!", ephemeral=True)
+            return
+
+        new_x, new_y = player["x"], player["y"]
+
+        if direction == "up" and player["x"] > 1:
+            player['dir'] = "up"
+            new_x -= 1
+        elif direction == "down" and player["x"] < 9:
+            player['dir'] = "down"
+            new_x += 1
+        elif direction == "left" and player["y"] > 1:
+            player['dir'] = "left"
+            new_y -= 1
+        elif direction == "right" and player["y"] < 9:
+            player['dir'] = "right"
+            new_y += 1
+
+        # Check if the new position is occupied by another player
+        for user_id, data in gate.participants.items():
+            if (new_x, new_y) == (data["x"], data["y"]):
+                await interaction.followup.send("❌ You cannot move onto another player!", ephemeral=True)
+                return
+
+        if (new_x, new_y) in gate.enemies and gate.enemies[(new_x, new_y)]['revealed']:
+            await interaction.followup.send("❌ You cannot move onto an enemy!", ephemeral=True)
+            return
+
+        player["x"], player["y"] = new_x, new_y
+        player["cooldown"] = time.time() + 2
+
+        current_pos = (new_x, new_y)
+        mini_ = discord.Embed(title="Gate",color=discord.Color.blurple())
+        if current_pos in gate.enemies and not gate.enemies[current_pos]["revealed"]:
+            gate.enemies[current_pos]["revealed"] = True
+            player["frozen"] = True
+            if direction == "up":
+                new_x += 1
+            elif direction == "down":
+                new_x -= 1
+            elif direction == "left":
+                new_y += 1
+            elif direction == "right":
+                new_y -= 1
+            player["x"], player["y"] = new_x, new_y
+
+            grid = gate.generate_grid()
+            grid2 = gate.generate_grid(interaction.user.id)
+            mini_.description = f"> You can move onto the blue boxes\n\n**Grid**\n{grid}"
+            await interaction.edit_original_response(embed=mini_)
+
+            embed.set_field_at(1, name="Grid", value=grid, inline=False)
+
+            await message.edit(embed=embed, view=self.create_main_buttons(gate, message, embed))
+
+            enemy = gate.enemies[current_pos]["type"]
+            enemy_ = gate.enemies[current_pos]['emoji']
+            gate.logs.append(f"{player_} {interaction.user.display_name} encountered {(enemy_)} {enemy['name']}\n┗ Position: (X: {new_x}, Y:{new_y})!")
+
+            user = await interaction.user.create_dm()
+            dm_channel_id = user.id  # Get the DM channel ID
+
+            battle = GateBattle(self.bot, interaction.user.id, enemy,interaction.channel.id)
+            await interaction.followup.send(f"You stumbled upon a monster!\n<#{dm_channel_id}> Battle here.",ephemeral=True)
+
+            result = await battle.start_battle(interaction)
+            result = await battle.start_battle(interaction)
+            if result is True:  # Player won
+                gate.tk_enemies += 1
+                player["kills"] += 1
+                embed.description = (
+                    "> Complete the gate in **5** minutes to fight the boss and earn rewards\n\n"
+                    "**Quest**\n"
+                    f"-# ┗ Find and Neutralize **{gate.tk_enemies}/10** monsters."
+                )
+                gate.logs.append(f"{player_} {interaction.user.display_name} defeated {(enemy_)} {enemy['name']} \n┗ Position: (X: {new_x}, Y:{new_y})!")
+                player["frozen"] = False
+
+                # Modified boss spawn check
+                if gate.tk_enemies >= 10:
+                    try:
+                        await gate.check_quest_completion(interaction)
+                    except Exception as e:
+                        print(f"Error in boss spawn: {e}")
+                        await interaction.followup.send("An error occurred while starting the boss battle!", ephemeral=True)
+            else:  # Player lost
+                gate.logs.append(f"{player_} {interaction.user.display_name} lost to {(enemy_)} {enemy['name']}\n┗ Position: (X:{new_x}, Y:{new_y})!")
+                await interaction.followup.send(f"{player_} {interaction.user.display_name}, you lost the battle!")
+                gate.enemies[current_pos]["revealed"] = False
+                player["dead"] = True
+                player['hp'] = 0
+                
+        grid = gate.generate_grid()
+        grid2 = gate.generate_grid(interaction.user.id)
+        embed.set_field_at(1, name="Grid", value=grid, inline=False)
+        mini_.description = f"> You can move onto the blue boxes\n\n**Grid**\n{grid2}"
+
+        await interaction.edit_original_response(embed=mini_)
+
+        await message.edit(embed=embed, view=self.create_main_buttons(gate, message, embed))
+
+def setup(bot):
+    bot.add_cog(GateCommands(bot))

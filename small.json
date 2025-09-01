@@ -1,0 +1,182 @@
+{
+  "E-Rank": [
+      {
+          "id": "goblin",
+          "name": "Goblin",
+          "hp": 150,
+          "atk": 20,
+          "speed": 5,
+          "image": "https://files.catbox.moe/7nj7he.png"
+      },
+      {
+          "id": "horned_rabbit",
+          "name": "Horned Rabbit",
+          "hp": 180,
+          "atk": 25,
+          "speed": 6,
+          "image": "https://files.catbox.moe/br2x7z.png"
+      },
+      {
+          "id": "slime",
+          "name": "Slime",
+          "hp": 120,
+          "atk": 15,
+          "speed": 4,
+          "image": "https://files.catbox.moe/zji01h.png"
+      }
+  ],
+  "D-Rank": [
+      {
+          "id": "orc",
+          "name": "Orc",
+          "hp": 500,
+          "atk": 50,
+          "speed": 6,
+          "image": "https://files.catbox.moe/qcpoeq.png"
+      },
+      {
+          "id": "lizardman",
+          "name": "Lizardman",
+          "hp": 450,
+          "atk": 45,
+          "speed": 7,
+          "image": "https://files.catbox.moe/0l08y2.png"
+      },
+      {
+          "id": "skeleton_warrior",
+          "name": "Skeleton Warrior",
+          "hp": 400,
+          "atk": 40,
+          "speed": 6,
+          "image": "https://files.catbox.moe/iilgjh.png"
+      },
+      {
+          "id": "giant_bat",
+          "name": "Giant Bat",
+          "hp": 350,
+          "atk": 35,
+          "speed": 9,
+          "image": "https://files.catbox.moe/zvpkhq.png"
+      }
+  ],
+  "C-Rank": [
+      {
+          "id": "ogre",
+          "name": "Ogre",
+          "hp": 1200,
+          "atk": 120,
+          "speed": 4,
+          "image": "https://files.catbox.moe/wv0aq6.png"
+      },
+      {
+          "id": "assassin_goblin",
+          "name": "Assassin Goblin",
+          "hp": 800,
+          "atk": 85,
+          "speed": 10,
+          "image": "https://files.catbox.moe/5m1sy9.png"
+      },
+      {
+          "id": "flame_hound",
+          "name": "Flame Hound",
+          "hp": 900,
+          "atk": 95,
+          "speed": 8,
+          "image": "https://files.catbox.moe/559cfs.png"
+      },
+      {
+          "id": "cursed_knight",
+          "name": "Cursed Knight",
+          "hp": 1000,
+          "atk": 110,
+          "speed": 6,
+          "image": "https://files.catbox.moe/fwt2lb.png"
+      }
+  ],
+  "B-Rank": [
+      {
+          "id": "minotaur",
+          "name": "Minotaur",
+          "hp": 3000,
+          "atk": 250,
+          "speed": 5,
+          "image": "https://files.catbox.moe/4qr9yx.png"
+      },
+      {
+          "id": "shadow_warrior",
+          "name": "Shadow Warrior",
+          "hp": 2500,
+          "atk": 220,
+          "speed": 9,
+          "image": "https://files.catbox.moe/hum9ol.png"
+      },
+      {
+          "id": "giant_scorpion",
+          "name": "Giant Scorpion",
+          "hp": 2800,
+          "atk": 240,
+          "speed": 7,
+          "image": "https://files.catbox.moe/f459z1.png"
+      },
+      {
+          "id": "demon_guard",
+          "name": "Demon Guard",
+          "hp": 2700,
+          "atk": 230,
+          "speed": 6,
+          "image": "https://files.catbox.moe/m283xd.png"
+      }
+  ],
+  "A-Rank": [
+      {
+          "id": "red_ogre",
+          "name": "Red Ogre",
+          "hp": 7000,
+          "atk": 500,
+          "speed": 6,
+          "image": "https://files.catbox.moe/vlk6de.png"
+      },
+      {
+          "id": "infernal_beast",
+          "name": "Infernal Beast",
+          "hp": 7200,
+          "atk": 520,
+          "speed": 7,
+          "image": "https://files.catbox.moe/2rrvm9.png"
+      },
+      {
+          "id": "lich",
+          "name": "Lich",
+          "hp": 6000,
+          "atk": 450,
+          "speed": 5,
+          "image": "https://files.catbox.moe/giza16.png"
+      }
+  ],
+  "S-Rank": [
+      {
+          "id": "chimera",
+          "name": "Chimera",
+          "hp": 15000,
+          "atk": 1000,
+          "speed": 10,
+          "image": "https://files.catbox.moe/el14w2.png"
+      },
+      {
+          "id": "abyss_dragon",
+          "name": "Abyss Dragon",
+          "hp": 18000,
+          "atk": 1100,
+          "speed": 9,
+          "image": "https://files.catbox.moe/vvxdwi.png"
+      },
+      {
+          "id": "arch_demon",
+          "name": "Arch Demon",
+          "hp": 16000,
+          "atk": 1050,
+          "speed": 7,
+          "image": "https://files.catbox.moe/c9t41a.png"
+      }
+  ]
+}

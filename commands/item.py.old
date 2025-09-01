@@ -1,0 +1,673 @@
+import asyncio
+import discord
+from discord.ext import commands
+from discord import app_commands
+from structure.player import Player
+from structure.items import ItemManager
+from structure.emoji import getEmoji, getRarityEmoji, getClassEmoji  # Utility functions for emojis
+from utilis.utilis import get_emoji, get_emoji_url, getStatWeapon, player_item_autocomplete , item_autocomplete
+from rapidfuzz import process,fuzz
+
+async def gear_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    gears = ["Gear I", "Gear II", "Gear III"]
+    return [
+        app_commands.Choice(name=gear, value=gear)
+        for gear in gears if current.lower() in gear.lower()
+    ]
+
+class ViewAll(discord.ui.View):
+    def __init__(self, ctx,user, total_pages, current_page, embed, inventory):
+        super().__init__(timeout=20)
+        self.ctx = ctx
+        self.user = user
+        self.total_pages = total_pages
+        self.current_page = current_page
+        self.embed = embed
+        self.inventory = inventory
+        double_right_button = discord.ui.Button(
+            label=str(self.total_pages),
+            style=discord.ButtonStyle.primary,
+            row=1
+        )
+        double_right_button.callback = self.double_right_button_callback
+        self.add_item(double_right_button)
+    
+    @discord.ui.button(label=1, style=discord.ButtonStyle.primary, row=1)
+    async def double_left_button_callback(self, button, interaction):
+        if self.current_page == 1:
+            await interaction.response.send_message(
+                "You are already on the first page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page = 1
+        await self.update_message()
+
+    @discord.ui.button(emoji=getEmoji("left"), style=discord.ButtonStyle.secondary, row=1)
+    async def previous_button_callback(self, button, interaction):
+        if self.current_page == 1:
+            await interaction.response.send_message(
+                "You are already on the first page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page -= 1
+        await self.update_message()
+
+    @discord.ui.button(emoji=getEmoji("pause"), style=discord.ButtonStyle.secondary, row=1)
+    async def pause(self, button, interaction):
+        await interaction.response.defer()
+        self.view = None
+        await self.ctx.edit(view=None)
+
+    @discord.ui.button(emoji=getEmoji("right"), style=discord.ButtonStyle.secondary, row=1)
+    async def next_button_callback(self, button, interaction):
+        if self.current_page == self.total_pages:
+            await interaction.response.send_message(
+                "You are already on the last page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page += 1
+        await self.update_message()
+
+    async def double_right_button_callback(self, interaction:discord.Interaction):
+        if self.current_page == self.total_pages:
+            await interaction.response.send_message(
+                "You are already on the last page.", ephemeral=True)
+            return
+        await interaction.response.defer()
+        self.current_page = self.total_pages
+        await self.update_message()
+
+    @discord.ui.select(
+        placeholder="Choose an Option!",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="SSR Rarity",
+                                 description="Sort Rarity in Ascending Order", emoji=getRarityEmoji("ssr")),
+            discord.SelectOption(label="SR Rarity",
+                                 description="Sort Rarity in Descending Order", emoji=getRarityEmoji("super rare")),
+            discord.SelectOption(label="R Rarity",
+                                 description="Sort Rarity in Descending Order", emoji=getRarityEmoji("rare")),
+            discord.SelectOption(label="Wind Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("wind")),
+            discord.SelectOption(label="Fire Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("fire")),
+            discord.SelectOption(label="Water Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("water")),
+            discord.SelectOption(label="Light Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("light")),
+            discord.SelectOption(label="Dark Element",
+                                 description="Sort Rarity in Descending Order", emoji=getClassEmoji("dark")),
+        ]
+    )
+    async def res(self, select, interaction):
+        option = select.values[0]
+        await interaction.response.defer()
+        filtered_inventory = await self.filter_inventory(option)
+
+        if not filtered_inventory:
+            await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="No Items Found",
+                    description=f"No items found for the selected option: {option}.",
+                    color=discord.Color.red()
+                ),
+                view=self
+            )
+            return
+
+        await self.update_message(inventory=filtered_inventory)
+
+        await interaction.edit_original_response(
+            embed=self.embed,
+            view=self
+        )
+
+    async def filter_inventory(self, option):
+        filtered_inventory = {}
+        
+        if option == "SSR Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).rarity == "SSR"}
+        elif option == "Wind Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).classType == "Wind"}
+        elif option == "Fire Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).classType == "Fire"}
+        elif option == "Water Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).classType == "Water"}
+        elif option == "Light Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).classType == "Light"}
+        elif option == "Dark Element":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).classType == "Dark"}
+        elif option == "SR Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).rarity == "Super Rare"}
+        elif option == "R Rarity":
+            filtered_inventory = {item_id: item for item_id, item in self.inventory.items() if (await ItemManager.get(item_id)).rarity == "Rare"}
+
+        return filtered_inventory
+
+    async def update_message(self, inventory=None):
+        if inventory is None:
+            inventory = self.inventory
+
+        if not inventory:
+            await self.ctx.edit(embed=discord.Embed(
+                title="No Weapons",
+                description="You have no weapons in your inventory.",
+                color=discord.Color.red()
+            ), view=None)
+            return
+
+        weapons_per_page = 9
+        start_index = (self.current_page - 1) * weapons_per_page
+        end_index = min(start_index + weapons_per_page, len(inventory))
+        inventory_list = list(inventory.items())
+        qx = getEmoji("qx")
+        down = getEmoji("down")
+        current_page_weapons = inventory_list[start_index:end_index]
+
+        self.embed.clear_fields()  # Clear previous fields
+        description=f"Weapon Collection of <@{self.user}>\n\n"
+
+        for index, (item_id, item_data) in enumerate(current_page_weapons, start=start_index + 1):
+            weapon = await ItemManager.get(item_id)
+            tier_stars = "★" * item_data['tier'] + "☆" * (5 - item_data['tier'])
+            if weapon:  # Ensure the weapon exists
+                if weapon.type == "Hero_Weapon":
+                    a ="H"
+                else:
+                    a = "P"
+                description += (
+                    f"{get_emoji(weapon.id)} **{weapon.name}** •"
+                    f" {tier_stars} • "
+                    f"`LV {item_data['level']}`\n"
+                )
+
+        self.embed.description = description
+
+        self.embed.set_footer(
+            text=f'Viewing Page {self.current_page}/{self.total_pages} This page has '
+                 f'{len(current_page_weapons)}/{len(inventory)} Weapons.')
+
+        await self.ctx.edit(embed=self.embed, view=self)
+    async def on_timeout(self):
+        await self.ctx.edit(embed=self.embed, view=None)  # Update the message to show disabled buttons
+
+
+class ItemCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.hybrid_group(name="weapon", aliases=["w"], help="Commands to manage and view your weapons.")
+    @app_commands.describe(item_name="The name of the weapon to get info about.")
+    @app_commands.autocomplete(item_name=player_item_autocomplete)
+    async def w_(self, ctx: commands.Context, *, item_name: str):
+        """Shows information about a weapon you own."""
+        await ctx.trigger_typing()
+
+        player = await Player.get(ctx.author.id)
+
+        if player is None:
+            down = getEmoji("down")
+            embed = discord.Embed(title="Error", description=f"You haven't started the bot yet\n{down}Use `sl start` to get Re-Awakening", color=discord.Color.red())
+            await ctx.send(embed=embed)
+            return
+
+        inventory = player.get_inventory()
+
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any weapons in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        inventory_names = {item_id: (await ItemManager.get(item_id)).name for item_id in inventory.keys()}
+        matches = process.extractOne(item_name, inventory_names.values(), scorer=fuzz.ratio)
+
+        if matches and matches[1] >= 75:
+            matched_name = matches[0]
+            item_id = next(key for key, value in inventory_names.items() if value == matched_name)
+            item_data = {"id": item_id, "details": await ItemManager.get(item_id), "player_data": inventory[item_id]}
+        else:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Weapon '{item_name}' Not Found**\nPlease ensure you selected a valid weapon from your inventory.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        item = item_data['details']
+        player_data = item_data['player_data']
+
+        tier_stars = "★" * player_data['tier'] + "☆" * (5 - player_data['tier'])
+        down = getEmoji("down")
+        shard = getEmoji("shard")
+        shards = player_data["quantity"]
+
+        description = (
+            f"**Level**: {player_data['level']}\n"
+            f"**Experience**: `[{player_data.get('xp', 0)}/100]`\n"
+            f"**Tier**: {tier_stars}\n"
+            f"{down} Weapon Shards: `x{shards-1}` {get_emoji(item.name)}"
+        )
+
+        embed = discord.Embed(
+            title=f"{item.name}",
+            color=discord.Color.gold(),
+            description=description
+        )
+
+        embed.set_image(url=get_emoji_url(item.id))
+        e = "Player"
+        if item.type.lower() == "hero_weapon":
+            e = "Hunter"
+            
+        embed.set_thumbnail(url=get_emoji_url(getRarityEmoji(item.rarity)))
+        embed.add_field(
+            name="Information",
+            value=f"Class: `{item.classType.capitalize()}`",
+            inline=True
+        )
+
+        atk = getEmoji("attack")
+        defe = getEmoji("defense")
+        health = getEmoji("health")
+        mp = getEmoji("mp")
+        qx = getEmoji("qx")
+
+        # Get weapon stats based on level
+        weapon_level = player_data['level']
+        weapon_stats = await getStatWeapon(item_id, weapon_level)
+
+        non_zero_stats = []
+
+        if weapon_stats['attack'] > 0:
+            non_zero_stats.append(f"**Increased Attack**: `{weapon_stats['attack']}`")
+        if weapon_stats['defense'] > 0:
+            non_zero_stats.append(f"**Increased Defense**: `{weapon_stats['defense']}`")
+        if weapon_stats['hp'] > 0:
+            non_zero_stats.append(f"**Increased Health**: `{weapon_stats['hp']}`")
+        if weapon_stats['mp'] > 0:
+            non_zero_stats.append(f"**Increased Mana Points**: `{weapon_stats['mp']}`")
+
+        if non_zero_stats:
+            non_zero_stats[-1] = f"{down} {non_zero_stats[-1]}"
+
+        for i in range(len(non_zero_stats) - 1):
+            non_zero_stats[i] = f"{qx} {non_zero_stats[i]}"
+
+        embed.add_field(
+            name="Stats",
+            value="\n".join(non_zero_stats),
+            inline=False
+        )
+
+        embed.set_footer(
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url,
+            text=f"This weapon belongs to {ctx.author.name}\nsl upgrade to increase Level"
+        )
+        embed.set_author(name=f"{ctx.author.name}'s Weapon")
+
+        await ctx.send(embed=embed)
+    
+
+    @w_.command(name="weapons", help="View your entire weapon inventory.")
+    async def item_inventory(self, ctx: commands.Context):
+        player = await Player.get(ctx.author.id)
+
+        if player is None:
+            down = getEmoji("down")
+            embed = discord.Embed(title="Error", description=f"You haven't started the bot yet\n{down}Use `sl start` to get Re-Awakening", color=discord.Color.red())
+            await ctx.send(embed=embed)
+            return
+
+        inventory = player.get_inventory()
+
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any weapons in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        embed = discord.Embed(
+            title="Weapon Inventory",
+            description="`sl weaponinfo [name]` to view your weapon.\n`sl gacha` to pull new weapons.",
+        )
+        embed.set_footer(text="Solo Leveling Bot | Weapon Inventory")
+        down = getEmoji("down")
+        weapons_per_page = 10
+
+        weapons = []
+        for item_id, item_data in inventory.items():
+            item = await ItemManager.get(item_id)
+            if item:
+                weapons.append((item, item_data))
+            if len(weapons) >= weapons_per_page:
+                break
+        description=f"Weapon Collection of <@{ctx.author.id}>\n\n"
+        for weapon, item_data in weapons:
+            qx = getEmoji("qx")
+            tier_stars = "★" * item_data['tier'] + "☆" * (5 - item_data['tier'])
+            if weapon.type == "Hero_Weapon":
+                a ="H"
+            else:
+                a = "P"
+            
+            if weapon:
+                description += (
+                    f"{get_emoji(weapon.id)} **{weapon.name}** •"
+                    f" {tier_stars} • "
+                    f"`LV {item_data['level']}`\n"
+                )
+
+        embed.description = description
+        total_pages = (len(inventory) // weapons_per_page) + (1 if len(inventory) % weapons_per_page > 0 else 0)
+
+        message = await ctx.reply(embed=embed,mention_author=False)
+    
+        # Create a view and add it to the message
+        view = ViewAll(message, ctx.author.id,total_pages, 1, embed, inventory)
+        await message.edit(embed=embed, view=view)
+
+
+    @w_.command(name="upgrade", aliases=["u"], help="Upgrade a weapon's level using enhancement gear.")
+    @app_commands.describe(name="The name of the weapon to upgrade.", gear="The gear to use for the upgrade.", quantity="The amount of gear to use.")
+    @app_commands.autocomplete(name=player_item_autocomplete, gear=gear_autocomplete)
+    async def weapon_upgrade(self, ctx: commands.Context, name: str, gear: str, quantity: int = 1):        
+        player = await Player.get(ctx.author.id)
+        down = getEmoji("down")
+
+        if not player:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR]**\nYou don't have a profile yet. Use the bot to start your journey!",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if player.trade:
+            await ctx.send(f"<@{player.id}>, is in the middle of a 🤝 trade. Complete it before proceeding or join the support server if this is a bug.")
+            return
+
+        inventory = player.get_inventory()
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any weapons in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        weapon_names = {item_id: (await ItemManager.get(item_id)).name for item_id in inventory}
+        best_match, score, item_id = process.extractOne(name, weapon_names.values(), scorer=fuzz.ratio)
+        
+        if score < 50:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Weapon '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+        
+        weapon_data = None
+        for id, weapon_name in weapon_names.items():
+            if weapon_name == best_match:
+                weapon_data = {"id": id, "details": await ItemManager.get(id), "player_data": inventory[id]}
+                break
+
+        if not weapon_data:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Weapon '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        item = weapon_data['details']
+        weapon_id = weapon_data['id']
+        weapon_info = weapon_data["player_data"]
+
+        if (weapon_info["level"] == 10 and weapon_info["tier"] == 0) or \
+        (weapon_info["level"] == 20 and weapon_info["tier"] == 1) or \
+        (weapon_info["level"] == 40 and weapon_info["tier"] == 2) or \
+        (weapon_info["level"] == 60 and weapon_info["tier"] == 3) or \
+        (weapon_info["level"] == 80 and weapon_info["tier"] == 4):
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR]**\nThis weapon is at level {weapon_info['level']} and needs a Limit-Break to upgrade further.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        gear_map = {
+            "gear i": "Gear I", "gear1": "Gear I", "1": "Gear I", "g1": "Gear I",
+            "gear ii": "Gear II", "gear2": "Gear II", "2": "Gear II", "g2": "Gear II",
+            "gear iii": "Gear III", "gear3": "Gear III", "3": "Gear III", "g3": "Gear III"
+        }
+        
+        gear_input = gear.lower()
+
+        if gear_input not in gear_map:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR] Invalid Gear Selected**\nPlease choose a valid gear option.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+        
+        gear_name = gear_map[gear_input]
+        xp_per_gear = {"Gear I": 100, "Gear II": 500, "Gear III": 1000}
+        total_xp = xp_per_gear[gear_name] * quantity
+
+        gear_attr_map = {"Gear I": "gear1", "Gear II": "gear2", "Gear III": "gear3"}
+        player_gear_attr = gear_attr_map[gear_name]
+
+        if getattr(player, player_gear_attr, 0) < quantity:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=(
+                        f"**[ERROR] Insufficient {gear_name}**\n"
+                        f"You need x{quantity} {getEmoji(player_gear_attr)} {gear_name}, but you only have {getattr(player, player_gear_attr, 0)}."
+                    ),
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        def calculate_gold_cost(level):
+            return 2000 * (2 ** (level // 20))
+
+        setattr(player, player_gear_attr, getattr(player, player_gear_attr) - quantity)
+        level_before = weapon_info["level"]
+        result = player.weapon_add_xp(weapon_id, total_xp)
+        level_after = weapon_info["level"]
+        total_gold_required = sum(calculate_gold_cost(level) for level in range(level_before + 1, level_after + 1))
+
+        levels_gained = level_after - level_before
+        go = getEmoji("gold")
+
+        if levels_gained > 0:
+            if player.gold < total_gold_required:
+                embed = discord.Embed(
+                        title="SYSTEM MESSAGE",
+                        description=(
+                            f"**[ERROR] Insufficient Gold**\n"
+                            f"You need {go} x{total_gold_required} gold to upgrade this weapon."
+                        ),
+                        color=discord.Color.red()
+                    ).set_footer(text="System Notification")
+                await ctx.send(embed=embed)
+                return
+            player.gold -= total_gold_required
+        player.mIncrease("upgrade",quantity)
+        await player.save()
+
+        g = getEmoji(gear_attr_map[gear_name])
+        gold_spent_message = f"**Gold Spent:** {go} x{total_gold_required}\n" if levels_gained > 0 else ""
+        embed = discord.Embed(
+                title="UPGRADE SUCCESSFUL",
+                description=f"""
+**Weapon:** {item.name}
+**Gear Used:** {g} {gear_name} (x{quantity})
+{gold_spent_message}
+Experience Gained: `{total_xp}`
+{down} **Level(s)** Obtained: `+{levels_gained}`
+""",
+                color=discord.Color.dark_green()
+            )
+        embed.set_thumbnail(url=get_emoji_url(item.id))
+        embed.set_footer(text="System Notification")
+        await ctx.send(embed=embed)
+
+    @w_.command(name="break",aliases=["b"], help="Perform a limit break on a weapon to increase its tier.")
+    @app_commands.describe(name="The name of the weapon to limit break.")
+    @app_commands.autocomplete(name=player_item_autocomplete)
+    async def weapon_limit_break(self,ctx: commands.Context, *, name: str):
+        player = await Player.get(ctx.author.id)
+        down = getEmoji("down")
+
+        if not player:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[ERROR]**\nYou don't have a profile yet. Use the bot to start your journey!",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if player.trade:
+            await ctx.send(f"<@{player.id}>, is in the middle of a 🤝 trade. Complete it before proceeding or join the support server if this is a bug.")
+            return
+
+        inventory = player.get_inventory()
+        if not inventory:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description="**[NOTICE] Inventory Empty**\nYou don't have any weapons in your inventory yet.",
+                    color=discord.Color.blue()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Get all weapon names for fuzzy matching
+        weapon_names = {item_id: (await ItemManager.get(item_id)).name for item_id in inventory}
+        best_match, score, item_id = process.extractOne(name, weapon_names.values(), scorer=fuzz.ratio)
+
+        if score < 50:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Weapon '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Find matching weapon data
+        weapon_data = None
+        for id, weapon_name in weapon_names.items():
+            if weapon_name == best_match:
+                weapon_data = {"id": id, "details": await ItemManager.get(id), "player_data": inventory[id]}
+                break
+
+        if not weapon_data:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Weapon '{name}' Not Found**\nEnsure the name is correct.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        item = weapon_data['details']
+        weapon_id = weapon_data['id']
+        weapon_info = weapon_data["player_data"]
+        shards = weapon_info["quantity"] - 1
+
+        shard_break_levels = {10: 1, 20: 1, 40: 2, 60: 2, 80: 4}
+        tier_break_levels = {10: 5, 20: 10, 40: 20, 60: 40, 80: 60}
+
+        cube_attr_map = {"Water": "icube", "Wind": "wcube", "Fire": "fcube", "Dark": "dcube", "Light": "lcube"}
+        cube = cube_attr_map.get(item.classType)
+
+        limit_break_conditions = {
+            (10, 0): (shard_break_levels[10], tier_break_levels[10], 1, 20),
+            (20, 1): (shard_break_levels[20], tier_break_levels[20], 2, 40),
+            (40, 2): (shard_break_levels[40], tier_break_levels[40], 3, 60),
+            (60, 3): (shard_break_levels[60], tier_break_levels[60], 4, 80),
+            (80, 4): (shard_break_levels[80], tier_break_levels[80], 5, 100)
+        }
+
+        key = (weapon_info["level"], weapon_info["tier"])
+        if key not in limit_break_conditions:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR]**\nThis weapon has not reached the **required** level\n-# {down} No limit-break possible at the moment.",
+                    color=discord.Color.dark_red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        shard_required, tier_required, new_tier, upto = limit_break_conditions[key]
+
+        if shards < shard_required:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=(
+                        f"**[ERROR] Insufficient Weapon Shards**\n"
+                        f"You need x{shard_required} {get_emoji(item.id)} Weapon Shards to limit-break this weapon."
+                    ),
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        if getattr(player, cube, 0) < tier_required:
+            embed = discord.Embed(
+                    title="SYSTEM MESSAGE",
+                    description=f"**[ERROR] Insufficient {item.classType} Cubes**\nYou need x{tier_required} {getEmoji(cube)} {item.classType} cubes to limit-break this weapon.",
+                    color=discord.Color.red()
+                ).set_footer(text="System Notification")
+            await ctx.send(embed=embed)
+            return
+
+        # Deduct the cubes and perform the limit-break
+        setattr(player, cube, getattr(player, cube, 0) - tier_required)
+        weapon_info["tier"] = new_tier
+        weapon_info["quantity"] -= shard_required
+
+        tier_stars = "★" * new_tier + "☆" * (5 - new_tier)
+        
+        player.mIncrease("break")
+        await player.save()
+
+        embed = discord.Embed(
+                title="LIMIT-BREAKED",
+                description=(
+                    f"**Weapon:** {item.name}\n"
+                    f"**Cubes Used:** {getEmoji(cube)} {item.classType} Cubes (x{tier_required})\n"
+                    f"**Shards Used:** {get_emoji(weapon_id)} (x{shard_required})\n"
+                    f"{down} Limit-Break Successful!\n"
+                    f"**Upgraded Tier:** ` {tier_stars} `"
+                ),
+                color=discord.Color.dark_green()
+            )
+        embed.set_thumbnail(url=get_emoji_url(item.id))
+        embed.set_footer(text=f"- You can now upgrade your weapon up to {upto} level.")
+        await ctx.send(embed=embed)
+
+
+
+async def setup(bot):
+    await bot.add_cog(ItemCog(bot))

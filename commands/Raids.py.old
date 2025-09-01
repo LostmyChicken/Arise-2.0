@@ -1,0 +1,84 @@
+import json
+import random
+import time
+import discord
+from discord.ext import commands
+from utilis.utilis import PremiumCheck
+from structure.player import Player
+from structure.raids import Raid
+
+
+class RaidCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    # Prefix command for spawning a raid
+    @commands.command(name="raid")
+    async def spawn_raid(self, ctx):
+        await self._spawn_raid(ctx, is_slash=False)
+
+    async def _spawn_raid(self, ctx, is_slash):
+        player = await Player.get(ctx.author.id)
+        if not player:
+            message = "You haven't started the bot yet. Use `sl start` to get Re-Awakening!"
+            if is_slash:
+                await ctx.followup.send(message)
+            else:
+                await ctx.send(message)
+            return
+
+        base_cooldown_seconds = 28800
+        premium_multiplier = PremiumCheck(player)  # Get the multiplier from PremiumCheck
+        cooldown_seconds = base_cooldown_seconds * premium_multiplier
+        current_time = time.time()
+        if player.raid is not None and current_time - player.raid <= cooldown_seconds:
+            remaining_time = cooldown_seconds - (current_time - player.raid)
+            minutes, seconds = divmod(int(remaining_time), 60)
+            hours, minutes = divmod(minutes, 60)
+            boss = f"in **{hours}** hours **{minutes}** minutes **{seconds}** seconds"
+            embed = discord.Embed()
+            embed.title = "Command On Cooldown!"
+            embed.description = f"You can Spawn Raid again {boss}."
+            embed.set_thumbnail(url="https://i.redd.it/official-solo-leveling-emotes-from-koreas-kakaotalk-app-v0-4gu5a1u2e92e1.png?width=210&format=png&auto=webp&s=12568200e6361c02e9e86f7cc21d00e2e4f46e0e")
+            await ctx.reply(embed=embed,mention_author=False)
+            return
+            
+        if player.trade:
+            await ctx.send(f"<@{player.id}>, is in the middle of a 🤝 trade. Complete it before proceeding or join the support server if this is a bug.")
+            return
+        player.setRaidCooldown()
+        await player.save()
+        channel = ctx.channel
+        level = random.randint(50, 100)
+
+        if is_slash:
+            await ctx.followup.send(content=f"Shadow Raid spawned in channel {channel.id}.")
+        else:
+            await ctx.reply(content=f"You have spawned a shadow raid in {channel.id}",mention_author=False)
+            n = random.choice(["Igris","Tusk","Tank"])
+            raid = await Raid.spawn_raid(channel, shadow_name=n, level=level)  
+
+    @commands.command(name="raidleave")
+    async def leave_raid(self, ctx):
+        await self._leave_raid(ctx, is_slash=False)
+
+
+    async def _leave_raid(self, ctx, is_slash):
+        raid = await Raid.get_raid(ctx.channel.id)
+        if raid:
+            if ctx.author.id in raid.members:
+                await raid.remove_member(ctx.author.id)
+                message = f"{ctx.author.name} left the raid."
+            else:
+                message = "You are not part of this raid."
+        else:
+            message = "No raid found in this channel."
+
+        if is_slash:
+            await ctx.followup.send(message)
+        else:
+            await ctx.send(message)
+
+
+def setup(bot):
+    bot.add_cog(RaidCog(bot))

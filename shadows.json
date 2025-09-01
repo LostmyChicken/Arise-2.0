@@ -1,0 +1,61 @@
+{
+  "shadows": {
+    "Igris": {
+      "image": "https://files.catbox.moe/donb98.webp",
+      "defense": 660,
+      "attack": 180,
+      "type":"dark",
+      "health": 2000,
+      "basic_move": {
+        "name": "Piercing Slash",
+        "dmg": 150
+      },
+      "q_move": {
+        "name": "Phantom Strike",
+        "dmg": 300
+      },
+      "ultimate_move": {
+        "name": "Soul Rend",
+        "dmg": 600
+      }
+    },
+    "Tusk": {
+      "image": "https://files.catbox.moe/4yd1dd.png",
+      "defense": 670,
+      "attack": 180,
+      "type":"fire",
+      "health": 2000,
+      "basic_move": {
+        "name": "Piercing Slash",
+        "dmg": 150
+      },
+      "q_move": {
+        "name": "Phantom Strike",
+        "dmg": 300
+      },
+      "ultimate_move": {
+        "name": "Soul Rend",
+        "dmg": 600
+      }
+    },
+    "Tank": {
+      "image": "https://files.catbox.moe/1oywy3.webp",
+      "defense": 690,
+      "attack": 180,
+      "type":"water",
+      "health": 2000,
+      "basic_move": {
+        "name": "Piercing Slash",
+        "dmg": 150
+      },
+      "q_move": {
+        "name": "Phantom Strike",
+        "dmg": 300
+      },
+      "ultimate_move": {
+        "name": "Soul Rend",
+        "dmg": 600
+      }
+    }
+  }
+}

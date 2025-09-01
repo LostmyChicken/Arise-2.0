@@ -1,0 +1,580 @@
+{
+  "missions": {
+    "prologue_003": {
+      "id": "prologue_003",
+      "name": "Hunter's License",
+      "description": "Obtain your official hunter's license and join the Hunter's Association.",
+      "chapter": "prologue",
+      "difficulty": "normal",
+      "level_requirement": 8,
+      "prerequisites": ["prologue_002"],
+      "objectives": [
+        "Visit the Hunter's Association",
+        "Complete the registration process",
+        "Receive your E-rank license"
+      ],
+      "rewards": {
+        "gold": 3000,
+        "xp": 1500,
+        "diamonds": 5,
+        "tickets": 2,
+        "stat_points": 5,
+        "title": "Licensed Hunter"
+      },
+      "enemies": [],
+      "dialogue": [
+        {
+          "speaker": "Association Staff",
+          "text": "Welcome to the Hunter's Association. Here's your E-rank license."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "Finally... I'm officially a hunter. Time to prove myself."
+        }
+      ],
+      "unlocks": ["hunter_association", "official_raids"]
+    },
+    
+    "cartenon_temple_001": {
+      "id": "cartenon_temple_001",
+      "name": "The Cartenon Temple",
+      "description": "Enter the mysterious Cartenon Temple and face the trials within.",
+      "chapter": "cartenon_temple",
+      "difficulty": "hard",
+      "level_requirement": 30,
+      "prerequisites": ["reawakening_001"],
+      "objectives": [
+        "Enter the Cartenon Temple",
+        "Defeat the temple guardians",
+        "Reach the inner sanctum"
+      ],
+      "rewards": {
+        "gold": 25000,
+        "xp": 15000,
+        "diamonds": 100,
+        "tickets": 10,
+        "stat_points": 25,
+        "skill_points": 15,
+        "items": [],
+        "title": "Temple Conqueror"
+      },
+      "enemies": [
+        {
+          "name": "Temple Guardian",
+          "level": 35,
+          "hp": 2000,
+          "attack": 120,
+          "defense": 80
+        },
+        {
+          "name": "Stone Sentinel",
+          "level": 32,
+          "hp": 1500,
+          "attack": 100,
+          "defense": 100
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "System",
+          "text": "WARNING: High-level magical energy detected. Proceed with caution."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "This place... it's different from other dungeons. The mana here is ancient."
+        },
+        {
+          "speaker": "Temple Voice",
+          "text": "Only the worthy may pass. Prove your strength, young hunter."
+        }
+      ],
+      "unlocks": ["advanced_magic", "temple_rewards"]
+    },
+    
+    "demon_castle_001": {
+      "id": "demon_castle_001",
+      "name": "Demon Castle Entrance",
+      "description": "Approach the foreboding Demon Castle and face its outer defenses.",
+      "chapter": "demon_castle",
+      "difficulty": "hard",
+      "level_requirement": 40,
+      "prerequisites": ["cartenon_temple_001"],
+      "objectives": [
+        "Approach the Demon Castle",
+        "Defeat the outer guards",
+        "Find the castle entrance"
+      ],
+      "rewards": {
+        "gold": 35000,
+        "xp": 20000,
+        "diamonds": 150,
+        "tickets": 15,
+        "stat_points": 30,
+        "skill_points": 20,
+        "shadows": ["demon_guard_shadow"],
+        "title": "Castle Challenger"
+      },
+      "enemies": [
+        {
+          "name": "Demon Guard",
+          "level": 45,
+          "hp": 3000,
+          "attack": 150,
+          "defense": 100
+        },
+        {
+          "name": "Hell Hound",
+          "level": 42,
+          "hp": 2500,
+          "attack": 140,
+          "defense": 80
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "System",
+          "text": "DANGER: Demonic energy levels are extremely high. Retreat is advised."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "I've come too far to turn back now. These demons... they're strong."
+        },
+        {
+          "speaker": "Demon Guard",
+          "text": "No mortal shall pass into our lord's domain!"
+        }
+      ],
+      "unlocks": ["demon_extraction", "castle_access"]
+    },
+    
+    "red_gate_001": {
+      "id": "red_gate_001",
+      "name": "Red Gate Emergency",
+      "description": "Respond to a Red Gate emergency and save trapped hunters.",
+      "chapter": "red_gate",
+      "difficulty": "nightmare",
+      "level_requirement": 50,
+      "prerequisites": ["demon_castle_001"],
+      "objectives": [
+        "Enter the Red Gate",
+        "Locate trapped hunters",
+        "Defeat the gate boss",
+        "Evacuate all survivors"
+      ],
+      "rewards": {
+        "gold": 50000,
+        "xp": 30000,
+        "diamonds": 200,
+        "tickets": 20,
+        "stat_points": 40,
+        "skill_points": 30,
+        "hunters": ["ice_bear_hunter"],
+        "shadows": ["ice_bear_shadow"],
+        "title": "Red Gate Hero"
+      },
+      "enemies": [
+        {
+          "name": "Ice Bear",
+          "level": 55,
+          "hp": 5000,
+          "attack": 200,
+          "defense": 150
+        },
+        {
+          "name": "Frost Elemental",
+          "level": 52,
+          "hp": 4000,
+          "attack": 180,
+          "defense": 120
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "Trapped Hunter",
+          "text": "Help! We've been trapped here for days! The cold is killing us!"
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "Don't worry. I'll get you all out of here safely."
+        },
+        {
+          "speaker": "System",
+          "text": "New skill unlocked: Shadow Exchange. Use it to save the hunters."
+        }
+      ],
+      "unlocks": ["shadow_exchange", "red_gate_mastery"]
+    },
+    
+    "shadow_monarch_001": {
+      "id": "shadow_monarch_001",
+      "name": "Shadow Monarch Awakening",
+      "description": "Embrace your true nature as the Shadow Monarch and command the army of the dead.",
+      "chapter": "shadow_monarch",
+      "difficulty": "nightmare",
+      "level_requirement": 60,
+      "prerequisites": ["red_gate_001"],
+      "objectives": [
+        "Accept your role as Shadow Monarch",
+        "Command your shadow army",
+        "Defeat the rival monarch"
+      ],
+      "rewards": {
+        "gold": 100000,
+        "xp": 50000,
+        "diamonds": 500,
+        "tickets": 50,
+        "stat_points": 100,
+        "skill_points": 75,
+        "shadows": ["beru_shadow", "igris_shadow", "tank_shadow"],
+        "title": "Shadow Monarch"
+      },
+      "enemies": [
+        {
+          "name": "Rival Monarch",
+          "level": 70,
+          "hp": 10000,
+          "attack": 300,
+          "defense": 200
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "System",
+          "text": "You have awakened as the true Shadow Monarch. Your power is now limitless."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "I understand now. This is my destiny. I am the Shadow Monarch."
+        },
+        {
+          "speaker": "Beru",
+          "text": "My liege! Your loyal servant Beru is at your command!"
+        }
+      ],
+      "unlocks": ["monarch_powers", "shadow_army", "unlimited_growth"]
+    },
+
+    "double_dungeon_001": {
+      "id": "double_dungeon_001",
+      "name": "The Double Dungeon Discovery",
+      "description": "Enter the mysterious double dungeon that will change your fate forever.",
+      "chapter": "double_dungeon",
+      "difficulty": "normal",
+      "level_requirement": 10,
+      "prerequisites": ["prologue_003"],
+      "objectives": [
+        "Enter the double dungeon",
+        "Survive the trials",
+        "Discover the System"
+      ],
+      "rewards": {
+        "gold": 5000,
+        "xp": 3000,
+        "diamonds": 25,
+        "tickets": 5,
+        "stat_points": 10,
+        "skill_points": 5,
+        "title": "System User"
+      },
+      "enemies": [
+        {
+          "name": "Stone Statue",
+          "level": 15,
+          "hp": 800,
+          "attack": 60,
+          "defense": 40
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "System",
+          "text": "Welcome, Player. You have been selected to participate in the System."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "What is this? A system? This isn't like any dungeon I've seen before..."
+        }
+      ],
+      "unlocks": ["system_awakening", "leveling_system", "daily_quests"]
+    },
+
+    "first_reawakening_001": {
+      "id": "first_reawakening_001",
+      "name": "Proving Your Strength",
+      "description": "Show the world that you're no longer the weakest hunter.",
+      "chapter": "first_reawakening",
+      "difficulty": "normal",
+      "level_requirement": 20,
+      "prerequisites": ["double_dungeon_001"],
+      "objectives": [
+        "Complete a C-rank dungeon solo",
+        "Demonstrate your new abilities",
+        "Gain recognition from other hunters"
+      ],
+      "rewards": {
+        "gold": 15000,
+        "xp": 8000,
+        "diamonds": 50,
+        "tickets": 8,
+        "stat_points": 15,
+        "skill_points": 10,
+        "title": "Rising Hunter"
+      },
+      "enemies": [
+        {
+          "name": "Orc Warrior",
+          "level": 25,
+          "hp": 1200,
+          "attack": 80,
+          "defense": 60
+        },
+        {
+          "name": "Orc Shaman",
+          "level": 23,
+          "hp": 1000,
+          "attack": 90,
+          "defense": 50
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "Hunter Association Staff",
+          "text": "Impossible... Jin-Woo cleared a C-rank dungeon alone?"
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "I'm not the same person I was before. I've grown stronger."
+        }
+      ],
+      "unlocks": ["shadow_extraction", "advanced_dungeons"]
+    },
+
+    "jeju_island_001": {
+      "id": "jeju_island_001",
+      "name": "Jeju Island Raid",
+      "description": "Lead the raid to reclaim Jeju Island from the ant colony.",
+      "chapter": "jeju_island",
+      "difficulty": "nightmare",
+      "level_requirement": 70,
+      "prerequisites": ["shadow_monarch_001"],
+      "objectives": [
+        "Infiltrate the ant colony",
+        "Defeat the Ant Queen",
+        "Reclaim Jeju Island"
+      ],
+      "rewards": {
+        "gold": 150000,
+        "xp": 75000,
+        "diamonds": 750,
+        "tickets": 75,
+        "stat_points": 150,
+        "skill_points": 100,
+        "title": "Island Liberator"
+      },
+      "enemies": [
+        {
+          "name": "Ant Queen",
+          "level": 80,
+          "hp": 15000,
+          "attack": 400,
+          "defense": 250
+        },
+        {
+          "name": "Soldier Ant",
+          "level": 75,
+          "hp": 8000,
+          "attack": 300,
+          "defense": 200
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "This island has suffered long enough. Today, we take it back."
+        },
+        {
+          "speaker": "Ant Queen",
+          "text": "You dare challenge the queen of this domain?!"
+        },
+        {
+          "speaker": "Beru",
+          "text": "My liege, allow me to handle these insects!"
+        }
+      ],
+      "unlocks": ["ant_army", "island_mastery"]
+    },
+
+    "monarchs_war_001": {
+      "id": "monarchs_war_001",
+      "name": "War of the Monarchs",
+      "description": "Face the other Monarchs in the ultimate battle for supremacy.",
+      "chapter": "monarchs_war",
+      "difficulty": "nightmare",
+      "level_requirement": 80,
+      "prerequisites": ["jeju_island_001"],
+      "objectives": [
+        "Confront the Beast Monarch",
+        "Battle the Ice Monarch",
+        "Defeat the Dragon Emperor"
+      ],
+      "rewards": {
+        "gold": 250000,
+        "xp": 100000,
+        "diamonds": 1000,
+        "tickets": 100,
+        "stat_points": 200,
+        "skill_points": 150,
+        "title": "Monarch Slayer"
+      },
+      "enemies": [
+        {
+          "name": "Beast Monarch",
+          "level": 85,
+          "hp": 20000,
+          "attack": 500,
+          "defense": 300
+        },
+        {
+          "name": "Ice Monarch",
+          "level": 87,
+          "hp": 22000,
+          "attack": 520,
+          "defense": 320
+        },
+        {
+          "name": "Dragon Emperor",
+          "level": 90,
+          "hp": 25000,
+          "attack": 600,
+          "defense": 400
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "Beast Monarch",
+          "text": "So, the Shadow Monarch finally shows himself. Let us settle this!"
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "I won't let you destroy this world. This ends here!"
+        },
+        {
+          "speaker": "Dragon Emperor",
+          "text": "You think you can stand against the might of dragons?!"
+        }
+      ],
+      "unlocks": ["monarch_battle", "beast_powers", "ice_powers", "dragon_powers"]
+    },
+
+    "final_battle_001": {
+      "id": "final_battle_001",
+      "name": "The Last Stand",
+      "description": "The ultimate battle for humanity's survival against the final enemy.",
+      "chapter": "final_battle",
+      "difficulty": "nightmare",
+      "level_requirement": 90,
+      "prerequisites": ["monarchs_war_001"],
+      "objectives": [
+        "Face the ultimate enemy",
+        "Protect humanity",
+        "Save the world"
+      ],
+      "rewards": {
+        "gold": 500000,
+        "xp": 200000,
+        "diamonds": 2000,
+        "tickets": 200,
+        "stat_points": 500,
+        "skill_points": 300,
+        "title": "World Savior"
+      },
+      "enemies": [
+        {
+          "name": "The Architect",
+          "level": 100,
+          "hp": 50000,
+          "attack": 1000,
+          "defense": 500
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "The Architect",
+          "text": "You have interfered with my design for the last time, Shadow Monarch."
+        },
+        {
+          "speaker": "Sung Jin-Woo",
+          "text": "I'll protect this world and everyone in it, no matter the cost!"
+        },
+        {
+          "speaker": "System",
+          "text": "Final battle initiated. All limiters removed. Fight with everything you have!"
+        }
+      ],
+      "unlocks": ["time_mastery", "world_savior", "eternal_power", "legend_status"]
+    }
+  },
+  
+  "chapters": {
+    "prologue": {
+      "name": "Prologue: The Weakest Hunter",
+      "description": "Begin your journey as the world's weakest E-rank hunter.",
+      "emoji": "🌅",
+      "unlock_level": 1
+    },
+    "double_dungeon": {
+      "name": "Chapter 1: The Double Dungeon",
+      "description": "The fateful encounter that changes everything.",
+      "emoji": "⚡",
+      "unlock_level": 10
+    },
+    "first_reawakening": {
+      "name": "Chapter 2: First Reawakening",
+      "description": "Prove your newfound strength to the world.",
+      "emoji": "🔥",
+      "unlock_level": 20
+    },
+    "cartenon_temple": {
+      "name": "Chapter 3: Cartenon Temple",
+      "description": "Face the trials of the ancient temple.",
+      "emoji": "🏛️",
+      "unlock_level": 30
+    },
+    "demon_castle": {
+      "name": "Chapter 4: Demon Castle",
+      "description": "Infiltrate the demon lord's stronghold.",
+      "emoji": "🏰",
+      "unlock_level": 40
+    },
+    "red_gate": {
+      "name": "Chapter 5: Red Gate Crisis",
+      "description": "Save trapped hunters from a deadly Red Gate.",
+      "emoji": "🔴",
+      "unlock_level": 50
+    },
+    "shadow_monarch": {
+      "name": "Chapter 6: Shadow Monarch",
+      "description": "Embrace your destiny as the Shadow Monarch.",
+      "emoji": "👑",
+      "unlock_level": 60
+    },
+    "jeju_island": {
+      "name": "Chapter 7: Jeju Island Raid",
+      "description": "Lead the raid to reclaim Jeju Island from the ants.",
+      "emoji": "🏝️",
+      "unlock_level": 70
+    },
+    "monarchs_war": {
+      "name": "Chapter 8: War of the Monarchs",
+      "description": "Face the other Monarchs in epic battles.",
+      "emoji": "⚔️",
+      "unlock_level": 80
+    },
+    "final_battle": {
+      "name": "Final Chapter: The Last Stand",
+      "description": "The ultimate battle for humanity's survival.",
+      "emoji": "💀",
+      "unlock_level": 90
+    }
+  }
+}

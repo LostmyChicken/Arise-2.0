@@ -36,7 +36,7 @@ interface StoryProgress {
 const StoryPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useAuth();
-  const [chapters, setChapters] = useState<StoryChapter[]>([]);
+const [chapters, setChapters] = useState<StoryChapter[]>([]);
   const [progress, setProgress] = useState<StoryProgress | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<StoryChapter | null>(null);
   const [showStoryModal, setShowStoryModal] = useState(false);
@@ -51,8 +51,8 @@ const StoryPage: React.FC = () => {
   const loadStoryData = async () => {
     try {
       const [chaptersResponse, progressResponse] = await Promise.all([
-        api.get('/story/chapters'),
-        api.get('/story/progress')
+        api.get('/api/story/chapters'),
+        api.get('/api/story/progress')
       ]);
       
       setChapters(chaptersResponse.data.chapters);
@@ -186,7 +186,7 @@ const StoryPage: React.FC = () => {
     
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const response = await api.post('/story/complete', {
+      await api.post('/api/story/complete', {
         chapter_id: selectedChapter.id,
         choice_id: choiceId
       });

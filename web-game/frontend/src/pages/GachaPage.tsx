@@ -49,7 +49,7 @@ interface GachaRates {
 const GachaPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useAuth();
-  const [rates, setRates] = useState<GachaRates | null>(null);
+const [rates, setRates] = useState<GachaRates | null>(null);
   const [pulling, setPulling] = useState(false);
   const [results, setResults] = useState<GachaResult[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -64,7 +64,7 @@ const GachaPage: React.FC = () => {
 
   const loadGachaRates = async () => {
     try {
-      const response = await api.get('/gacha/rates');
+      const response = await api.get('/api/gacha/rates');
       setRates(response.data);
     } catch (error) {
       console.error('Failed to load gacha rates:', error);
@@ -92,7 +92,7 @@ const GachaPage: React.FC = () => {
 
   const loadPlayerResources = async () => {
     try {
-      const response = await api.get('/player/profile');
+      const response = await api.get('/api/player/profile');
       const profileData = response.data.profile || response.data;
       const resources = profileData.resources || {};
 
@@ -117,7 +117,7 @@ const GachaPage: React.FC = () => {
     setCurrentReveal(0);
 
     try {
-      const response = await api.post('/gacha/pull', {
+      const response = await api.post('/api/gacha/pull', {
         pull_type: pullType,
         currency: currency
       });

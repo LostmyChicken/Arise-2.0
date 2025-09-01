@@ -15,15 +15,18 @@ from api.gacha import gacha_router
 
 from api.story import story_router
 from api.simple_endpoints import (
-    skills_router, upgrade_router, gates_router, arena_router,
-    inventory_router, leaderboard_router, daily_router
+    upgrade_router, gates_router, arena_router
 )
 from api.simple_endpoints import guild_router as simple_guild_router
 from api.worldboss import router as worldboss_router
 from api.trading import router as trading_router
 from api.training import router as training_router
 
-from api.market import router as market_router
+from api.market import market_router
+from api.skills import skills_router as new_skills_router
+from api.inventory import inventory_router as new_inventory_router
+from api.daily import daily_router as new_daily_router
+from api.leaderboard import leaderboard_router as new_leaderboard_router
 from api.gamedata import router as gamedata_router
 from services.auth_service import verify_token
 from services.database_service import init_database
@@ -87,22 +90,23 @@ app.include_router(battle_router, prefix="/api/battle", tags=["Battle"])
 app.include_router(gacha_router, prefix="/api/gacha", tags=["Gacha"])
 app.include_router(simple_guild_router, prefix="/api", tags=["Guild"])
 app.include_router(story_router, prefix="/api/story", tags=["Story"])
-app.include_router(skills_router, prefix="/api", tags=["Skills"])
+app.include_router(new_skills_router, prefix="/api/skills", tags=["Skills"])
+app.include_router(new_inventory_router, prefix="/api/inventory", tags=["Inventory"])
+app.include_router(new_leaderboard_router, prefix="/api/leaderboard", tags=["Leaderboard"])
+app.include_router(new_daily_router, prefix="/api/daily", tags=["Daily"])
+app.include_router(market_router, prefix="/api/market", tags=["Market"])
 app.include_router(upgrade_router, prefix="/api", tags=["Upgrade"])
 app.include_router(worldboss_router, prefix="/api", tags=["World Boss"])
 app.include_router(training_router, prefix="/api", tags=["Training"])
 app.include_router(gates_router, prefix="/api", tags=["Gates"])
 app.include_router(trading_router, prefix="/api", tags=["Trading"])
 app.include_router(arena_router, prefix="/api", tags=["Arena"])
-app.include_router(inventory_router, prefix="/api", tags=["Inventory"])
-app.include_router(leaderboard_router, prefix="/api", tags=["Leaderboard"])
-app.include_router(daily_router, prefix="/api", tags=["Daily"])
-app.include_router(market_router, prefix="/api", tags=["Market"])
 app.include_router(gamedata_router, prefix="/api", tags=["Game Data"])
 
 # Serve static files (frontend build)
 if os.path.exists("../frontend/build"):
-    app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
+    if os.path.exists("../frontend/build/static"):
+        app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
     app.mount("/", StaticFiles(directory="../frontend/build", html=True), name="frontend")
 
 @app.on_event("startup")
@@ -179,10 +183,4 @@ async def world_boss_action(sid, data):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 56092))
-    uvicorn.run(
-        "main:socket_app",
-        host="0.0.0.0",
-        port=port,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

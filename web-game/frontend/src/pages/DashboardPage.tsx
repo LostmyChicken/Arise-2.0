@@ -79,7 +79,7 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+  }, []);
 
   const calculateXPProgress = () => {
     if (!profile) return 0;

@@ -68,3 +68,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Node.js
+node_modules/
+web-game/frontend/node_modules/
+.cache/
+web-game/frontend/node_modules/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

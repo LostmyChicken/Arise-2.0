@@ -55,7 +55,7 @@ const BattlePage: React.FC = () => {
 
   const loadMonsters = async () => {
     try {
-      const response = await api.get('/battle/monsters');
+      const response = await api.get('/api/battle/monsters');
       setMonsters(response.data.monsters);
     } catch (error) {
       console.error('Failed to load monsters:', error);
@@ -104,7 +104,7 @@ const BattlePage: React.FC = () => {
   const startBattle = async (monsterId: number) => {
     setLoading(true);
     try {
-      const response = await api.post('/battle/start', {
+      const response = await api.post('/api/battle/start', {
         monster_id: monsterId
       });
       
@@ -153,7 +153,7 @@ const BattlePage: React.FC = () => {
     
     setAnimating(true);
     try {
-      const response = await api.post(`/battle/${battleState.battle_id}/action`, {
+      const response = await api.post(`/api/battle/${battleState.battle_id}/action`, {
         action: action
       });
       
